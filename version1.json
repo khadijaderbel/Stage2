@@ -1,0 +1,43 @@
+[
+
+  {
+    "sku": "LIV-002",
+    "nom": "Guide de Cuisine",
+    "caracteristiques": "250 pages, 30 min, illustré",
+    "imageUrl": "https://exemple.com/guide-cuisine.jpg",
+    "descriptionOriginale": "Guide de cuisine avec 250 pages de recettes faciles et illustrées.",
+    "descriptionGeneree": "Guide de Cuisine 250 pages, recettes faciles en 30 min illustrées.",
+    "statut": "actif",
+    "categorie": "Accessoires"
+  },
+  {
+    "sku": "JOU-001",
+    "nom": "Poupon Interactive",
+    "caracteristiques": "Pleure, rit, pile incluse",
+    "imageUrl": "https://exemple.com/poupon-interactif.jpg",
+    "descriptionOriginale": "Poupon interactif qui pleure et rit, pile incluse pour un jeu immédiat.",
+    "descriptionGeneree": "Poupon Interactive qui pleure et rit, pile incluse.",
+    "statut": "inactif",
+    "categorie": "Accessoires"
+  },
+  {
+    "sku": "JOU-002",
+    "nom": "Train Électrique",
+    "caracteristiques": "Train + rails + gare, 3 ans+",
+    "imageUrl": "https://exemple.com/train-electrique.jpg",
+    "descriptionOriginale": "Train électrique complet avec rails et gare, pour enfants dès 3 ans.",
+    "descriptionGeneree": "Train Électrique avec rails et gare, dès 3 ans.",
+    "statut": "actif",
+    "categorie": "Accessoires"
+  },
+  {
+    "sku": "MAI-001",
+    "nom": "Trousse Scolaire",
+    "caracteristiques": "40x20cm, 5 compartiments, imperméable",
+    "imageUrl": "https://exemple.com/trousse-scolaire.jpg",
+    "descriptionOriginale": "Trousse scolaire 40x20cm avec 5 compartiments imperméables.",
+    "descriptionGeneree": "Trousse Scolaire 40x20cm, 5 compartiments imperméables.",
+    "statut": "actif",
+    "categorie": "Accessoires"
+  }
+]

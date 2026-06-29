@@ -1,0 +1,949 @@
+{% extends 'base.html.twig' %}
+{% block title %}NOVAWIN - Gestion des Produits{% endblock %}
+{% block page_title %}Gestion des Produits{% endblock %}
+{% block page_subtitle %}Vos articles en ligne.{% endblock %}
+
+{% block body %}
+<div class="container-fluid p-0">
+
+    {% for message in app.flashes('success') %}
+        <div class="alert alert-success"
+             style="border-radius:12px;border:none;background:rgba(40,167,69,0.12);color:#28a745;">
+            <i class="fas fa-check-circle me-2"></i>{{ message }}
+        </div>
+    {% endfor %}
+    {% for message in app.flashes('error') %}
+        <div class="alert alert-danger"
+             style="border-radius:12px;border:none;background:rgba(220,53,69,0.12);color:#dc3545;">
+            <i class="fas fa-exclamation-circle me-2"></i>{{ message }}
+        </div>
+    {% endfor %}
+
+    <!-- ═══════════════════════════════════════
+         EN-TÊTE avec bouton Nouveau produit (split)
+    ═══════════════════════════════════════ -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-4">
+        <div>
+            <h2 class="mb-1" style="color:var(--text-primary);">
+                <i class="fas fa-box me-2" style="color:var(--emerald);"></i>Liste des Produits
+                <span id="badgeCount" class="badge rounded-pill ms-2"
+                      style="background:var(--emerald);color:#0b1329;font-size:0.75rem;">
+                    {{ produits.getTotalItemCount() }}
+                </span>
+            </h2>
+            <p class="mb-0" style="color:var(--text-secondary);">
+                <i class="fas fa-info-circle me-1"></i> Gérez votre catalogue de produits
+            </p>
+        </div>
+
+        <!-- BOUTON NOUVEAU PRODUIT (split) -->
+        <div class="nova-split-btn" id="newProductBtn">
+            <div class="nova-split-main" onclick="window.location.href='{{ path('app_produit_new') }}'">
+                <i class="fas fa-plus"></i>
+                <span>Nouveau produit</span>
+            </div>
+            <div class="nova-split-arrow" onclick="toggleMenu('newProductMenu')">
+                <i class="fas fa-chevron-down"></i>
+            </div>
+            <div class="nova-split-menu" id="newProductMenu">
+                <div class="nova-split-menu-item" onclick="window.location.href='{{ path('app_produit_new') }}'">
+                    <div class="nova-split-menu-icon" style="background:rgba(0,255,163,0.12);">
+                        <i class="fas fa-pen" style="color:var(--emerald);"></i>
+                    </div>
+                    <div>
+                        <div class="nova-split-menu-label">Saisie manuelle</div>
+                        <div class="nova-split-menu-desc">Créer un produit via le formulaire</div>
+                    </div>
+                </div>
+                <div class="nova-split-menu-divider"></div>
+                <div class="nova-split-menu-item" onclick="openImportModal()">
+                    <div class="nova-split-menu-icon" style="background:rgba(100,180,255,0.12);">
+                        <i class="fas fa-file-import" style="color:#64b4ff;"></i>
+                    </div>
+                    <div>
+                        <div class="nova-split-menu-label">Importer une liste</div>
+                        <div class="nova-split-menu-desc">CSV, Excel ou JSON</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtres -->
+    <div class="card border-0 shadow-sm rounded-4 mb-3"
+         style="background:var(--card-bg-light);border:1px solid var(--border-color);">
+        <div class="card-body p-3">
+            <div class="row g-3 align-items-center">
+
+                <div class="col-12 col-md-4">
+                    <div class="input-group">
+                        <span class="input-group-text"
+                              style="background:var(--bg-body);border-color:var(--border-color);color:var(--text-secondary);">
+                            <i class="fas fa-search"></i>
+                        </span>
+                        <input type="text" id="searchInput" class="form-control"
+                               placeholder="Rechercher par nom ou SKU..."
+                               style="background:var(--bg-body);border-color:var(--border-color);
+                                      color:var(--text-primary);border-radius:0 10px 10px 0;">
+                    </div>
+                </div>
+
+                <div class="col-12 col-md-3">
+                    <div class="input-group">
+                        <span class="input-group-text"
+                              style="background:var(--bg-body);border-color:var(--border-color);color:var(--text-secondary);">
+                            <i class="fas fa-filter"></i>
+                        </span>
+                        <select id="filterCategorie" class="form-select"
+                                style="background:var(--bg-body);border-color:var(--border-color);
+                                       color:var(--text-primary);border-radius:0 10px 10px 0;">
+                            <option value="">Toutes les catégories</option>
+                            {% for cat in categories %}
+                                <option value="{{ cat.nom|lower }}">{{ cat.nom }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="col-12 col-md-3">
+                    <div class="input-group">
+                        <span class="input-group-text"
+                              style="background:var(--bg-body);border-color:var(--border-color);color:var(--text-secondary);">
+                            <i class="fas fa-sort"></i>
+                        </span>
+                        <select id="sortSelect" class="form-select"
+                                style="background:var(--bg-body);border-color:var(--border-color);
+                                       color:var(--text-primary);border-radius:0 10px 10px 0;">
+                            <option value="nom-asc">Nom A → Z</option>
+                            <option value="nom-desc">Nom Z → A</option>
+                            <option value="sku-asc">SKU A → Z</option>
+                            <option value="sku-desc">SKU Z → A</option>
+                            <option value="date-desc">Plus récent</option>
+                            <option value="date-asc">Plus ancien</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="col-12 col-md-2 text-end">
+                    <button id="resetFilters" class="btn btn-sm"
+                            style="display:none;background:transparent;color:var(--text-secondary);
+                                   border:1px solid var(--border-color);border-radius:8px;">
+                        <i class="fas fa-times me-1"></i> Réinitialiser
+                    </button>
+                </div>
+            </div>
+            <small id="resultCount" class="d-block mt-2" style="color:var(--text-secondary);"></small>
+        </div>
+    </div>
+
+    <!-- Tableau -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden"
+         style="background:var(--card-bg-light);border:1px solid var(--border-color);">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" style="color:var(--text-primary);">
+                    <thead style="background:var(--bg-body);">
+                        <tr>
+                            <th class="px-4 py-3 text-uppercase small fw-bold"
+                                style="font-size:0.65rem;letter-spacing:1px;color:var(--text-secondary);">SKU</th>
+                            <th class="px-4 py-3 text-uppercase small fw-bold"
+                                style="font-size:0.65rem;letter-spacing:1px;color:var(--text-secondary);">NOM DU PRODUIT</th>
+                            <th class="px-4 py-3 text-uppercase small fw-bold"
+                                style="font-size:0.65rem;letter-spacing:1px;color:var(--text-secondary);">CATÉGORIE</th>
+                            <th class="px-4 py-3 text-uppercase small fw-bold"
+                                style="font-size:0.65rem;letter-spacing:1px;color:var(--text-secondary);">STATUT</th>
+                            <th class="px-4 py-3 text-uppercase small fw-bold"
+                                style="font-size:0.65rem;letter-spacing:1px;color:var(--text-secondary);">DATE CRÉATION</th>
+                            <th class="px-4 py-3 text-uppercase small fw-bold text-end"
+                                style="font-size:0.65rem;letter-spacing:1px;color:var(--text-secondary);">ACTIONS</th>
+                        </tr>
+                    </thead>
+                    <tbody id="produitTableBody">
+                        {% if produits.items is empty %}
+                            <tr>
+                                <td colspan="6" class="text-center py-5" style="color:var(--text-secondary);">
+                                    <i class="fas fa-box-open fa-3x d-block mb-3" style="opacity:0.5;"></i>
+                                    <p class="mb-0">Aucun produit enregistré pour le moment.</p>
+                                </td>
+                            </tr>
+                        {% else %}
+                            {% for produit in produits %}
+                                <tr class="border-bottom produit-row"
+                                    style="border-color:var(--border-color) !important;"
+                                    data-nom="{{ produit.nom|lower }}"
+                                    data-sku="{{ produit.sku|lower }}"
+                                    data-categorie="{{ produit.categorie.nom|lower }}"
+                                    data-statut="{{ produit.statut }}"
+                                    data-date="{{ produit.dateCreation|date('Y-m-d') }}">
+
+                                    <td class="px-4 py-3">
+                                        <span class="fw-semibold"
+                                              style="color:var(--emerald);font-family:monospace;">
+                                            {{ produit.sku }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3" style="font-weight:500;">
+                                        <div class="d-flex align-items-center gap-3">
+                                            {% if produit.imageUrl %}
+                                                <img src="{{ produit.imageUrl }}" alt="{{ produit.nom }}"
+                                                     style="width:36px;height:36px;object-fit:cover;
+                                                            border-radius:8px;border:1px solid var(--border-color);">
+                                            {% else %}
+                                                <div style="width:36px;height:36px;border-radius:8px;
+                                                            background:var(--bg-body);border:1px solid var(--border-color);
+                                                            display:flex;align-items:center;justify-content:center;">
+                                                    <i class="fas fa-image"
+                                                       style="color:var(--text-secondary);font-size:0.7rem;"></i>
+                                                </div>
+                                            {% endif %}
+                                            {{ produit.nom }}
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3" style="color:var(--text-secondary);">
+                                        {{ produit.categorie.nom }}
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        {% if produit.statut == 'actif' %}
+                                            <span class="badge rounded-pill px-3 py-2"
+                                                  style="background:rgba(40,167,69,0.15);color:#28a745;">
+                                                <i class="fas fa-circle me-1" style="font-size:0.5rem;"></i>Actif
+                                            </span>
+                                        {% elseif produit.statut == 'rupture' %}
+                                            <span class="badge rounded-pill px-3 py-2"
+                                                  style="background:rgba(220,53,69,0.15);color:#dc3545;">
+                                                <i class="fas fa-circle me-1" style="font-size:0.5rem;"></i>Rupture
+                                            </span>
+                                        {% else %}
+                                            <span class="badge rounded-pill px-3 py-2"
+                                                  style="background:rgba(108,117,125,0.15);color:#6c757d;">
+                                                <i class="fas fa-circle me-1" style="font-size:0.5rem;"></i>Inactif
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-4 py-3"
+                                        style="color:var(--text-secondary);font-size:0.85rem;">
+                                        {{ produit.dateCreation|date('d/m/Y') }}
+                                    </td>
+                                    <td class="px-4 py-3 text-end">
+                                        <div class="d-flex justify-content-end gap-2">
+                                            <a href="{{ path('app_produit_show', {'id': produit.id}) }}"
+                                               class="btn btn-sm rounded-circle"
+                                               style="width:34px;height:34px;border:1.5px solid var(--border-color);
+                                                      color:var(--text-secondary);background:transparent;"
+                                               onmouseover="this.style.borderColor='var(--emerald)';this.style.color='var(--emerald)';"
+                                               onmouseout="this.style.borderColor='var(--border-color)';this.style.color='var(--text-secondary)';"
+                                               title="Voir">
+                                                <i class="fas fa-eye" style="font-size:0.8rem;"></i>
+                                            </a>
+                                            <a href="{{ path('app_produit_edit', {'id': produit.id}) }}"
+                                               class="btn btn-sm rounded-circle"
+                                               style="width:34px;height:34px;border:1.5px solid var(--border-color);
+                                                      color:var(--text-secondary);background:transparent;"
+                                               onmouseover="this.style.borderColor='var(--emerald)';this.style.color='var(--emerald)';"
+                                               onmouseout="this.style.borderColor='var(--border-color)';this.style.color='var(--text-secondary)';"
+                                               title="Modifier">
+                                                <i class="fas fa-pen" style="font-size:0.8rem;"></i>
+                                            </a>
+                                            <form action="{{ path('app_produit_delete', {'id': produit.id}) }}"
+                                                  method="POST" class="d-inline">
+                                                <input type="hidden" name="_token"
+                                                       value="{{ csrf_token('delete' ~ produit.id) }}">
+                                                <button type="submit" class="btn btn-sm rounded-circle delete-btn"
+                                                        style="width:34px;height:34px;border:1.5px solid var(--border-color);
+                                                               color:var(--text-secondary);background:transparent;"
+                                                        onmouseover="this.style.borderColor='#dc3545';this.style.color='#dc3545';"
+                                                        onmouseout="this.style.borderColor='var(--border-color)';this.style.color='var(--text-secondary)';"
+                                                        data-produit-name="{{ produit.nom }}"
+                                                        title="Supprimer">
+                                                    <i class="fas fa-trash" style="font-size:0.8rem;"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        {% endif %}
+                    </tbody>
+                </table>
+
+                <div id="noResultRow" class="text-center py-5"
+                     style="display:none;color:var(--text-secondary);">
+                    <i class="fas fa-search fa-3x d-block mb-3" style="opacity:0.4;"></i>
+                    <p class="mb-0">Aucun produit ne correspond à votre recherche.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if produits.pageCount > 1 %}
+    <div class="d-flex justify-content-center mt-4">
+        <nav>
+            <ul class="pagination" style="gap:6px;">
+                {% if produits.currentPageNumber > 1 %}
+                    <li class="page-item">
+                        <a class="page-link"
+                           href="{{ path('app_produit_index', {'page': produits.currentPageNumber - 1}) }}"
+                           style="border-radius:10px;border:1.5px solid var(--border-color);
+                                  background:var(--card-bg-light);color:var(--text-secondary);padding:0.5rem 0.9rem;">
+                            <i class="fas fa-chevron-left" style="font-size:0.75rem;"></i>
+                        </a>
+                    </li>
+                {% endif %}
+                {% for i in 1..produits.pageCount %}
+                    <li class="page-item">
+                        <a class="page-link"
+                           href="{{ path('app_produit_index', {'page': i}) }}"
+                           style="border-radius:10px;padding:0.5rem 0.9rem;
+                                  {% if i == produits.currentPageNumber %}
+                                      background:var(--emerald);color:#0b1329;border:1.5px solid var(--emerald);font-weight:700;
+                                  {% else %}
+                                      border:1.5px solid var(--border-color);background:var(--card-bg-light);color:var(--text-secondary);
+                                  {% endif %}">
+                            {{ i }}
+                        </a>
+                    </li>
+                {% endfor %}
+                {% if produits.currentPageNumber < produits.pageCount %}
+                    <li class="page-item">
+                        <a class="page-link"
+                           href="{{ path('app_produit_index', {'page': produits.currentPageNumber + 1}) }}"
+                           style="border-radius:10px;border:1.5px solid var(--border-color);
+                                  background:var(--card-bg-light);color:var(--text-secondary);padding:0.5rem 0.9rem;">
+                            <i class="fas fa-chevron-right" style="font-size:0.75rem;"></i>
+                        </a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    <p class="text-center mt-2" style="color:var(--text-secondary);font-size:0.82rem;">
+        Page {{ produits.currentPageNumber }} sur {{ produits.pageCount }}
+        — {{ produits.getTotalItemCount() }} produit{{ produits.getTotalItemCount() > 1 ? 's' : '' }} au total
+    </p>
+    {% endif %}
+
+    <!-- SECTION EXPORT -->
+    <div class="card border-0 shadow-sm rounded-4 mt-4"
+         style="background:var(--card-bg-light);border:1px solid var(--border-color);">
+        <div class="card-body p-4">
+
+            <h6 class="fw-bold mb-3" style="color:var(--text-primary);">
+                <i class="fas fa-file-export me-2" style="color:var(--emerald);"></i>
+                Exporter les produits
+            </h6>
+
+            <div class="row g-3 align-items-end">
+
+                <div class="col-12 col-md-3">
+                    <label class="form-label small fw-semibold" style="color:var(--text-secondary);">
+                        <i class="fas fa-toggle-on me-1"></i> Statut
+                    </label>
+                    <select id="exportStatut" class="form-select"
+                            style="background:var(--bg-body);border-color:var(--border-color);
+                                   color:var(--text-primary);border-radius:10px;">
+                        <option value="">Tous les statuts</option>
+                        <option value="actif">Actif</option>
+                        <option value="inactif">Inactif</option>
+                        <option value="rupture">Rupture</option>
+                    </select>
+                </div>
+
+                <div class="col-12 col-md-3">
+                    <label class="form-label small fw-semibold" style="color:var(--text-secondary);">
+                        <i class="fas fa-tags me-1"></i> Catégorie
+                    </label>
+                    <select id="exportCategorie" class="form-select"
+                            style="background:var(--bg-body);border-color:var(--border-color);
+                                   color:var(--text-primary);border-radius:10px;">
+                        <option value="">Toutes les catégories</option>
+                        {% for cat in categories %}
+                            <option value="{{ cat.id }}">{{ cat.nom }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-12 col-md-3">
+                    <label class="form-label small fw-semibold" style="color:var(--text-secondary);">
+                        <i class="fas fa-search me-1"></i> Nom / SKU
+                    </label>
+                    <input type="text" id="exportSearch" class="form-control"
+                           placeholder="Filtrer par nom ou SKU..."
+                           style="background:var(--bg-body);border-color:var(--border-color);
+                                  color:var(--text-primary);border-radius:10px;">
+                </div>
+
+                <div class="col-12 col-md-3">
+                    <label class="form-label small fw-semibold" style="color:var(--text-secondary);">
+                        <i class="fas fa-download me-1"></i> Format d'export
+                    </label>
+
+                    <div class="uiverse-orbit-container" id="uiverseOrbitContainer">
+                        <div class="orbit-icon orbit-icon-1" onclick="selectExportFormat('csv','CSV','#00ffa3')" title="CSV">
+                            <i class="fas fa-file-csv"></i>
+                            <span class="orbit-label">CSV</span>
+                        </div>
+                        <div class="orbit-icon orbit-icon-2" onclick="selectExportFormat('excel','Excel','#1d6f42')" title="Excel">
+                            <i class="fas fa-file-excel"></i>
+                            <span class="orbit-label">Excel</span>
+                        </div>
+                        <div class="orbit-icon orbit-icon-3" onclick="selectExportFormat('json','JSON','#f0a500')" title="JSON">
+                            <i class="fas fa-file-code"></i>
+                            <span class="orbit-label">JSON</span>
+                        </div>
+                        <div class="orbit-icon orbit-icon-4" onclick="selectExportFormat('pdf','PDF','#dc3545')" title="PDF">
+                            <i class="fas fa-file-pdf"></i>
+                            <span class="orbit-label">PDF</span>
+                        </div>
+                        <div class="orbit-center-btn" id="exportOrbitBtn">
+                            <i class="fas fa-download"></i>
+                            <span>Télécharger</span>
+                            <span id="orbitFormatDisplay" style="font-size:0.5rem;opacity:0.7;display:block;font-weight:400;margin-top:1px;">CSV</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <small class="d-block mt-3" style="color:var(--text-secondary);">
+                <i class="fas fa-info-circle me-1"></i>
+                Laissez les filtres vides pour exporter <strong>tous les produits</strong>.
+                <strong>Survolez</strong> le bouton pour choisir le format, puis cliquez sur "Télécharger".
+            </small>
+        </div>
+    </div>
+
+</div>
+
+<!-- ═══════════════════════════════════
+     MODAL IMPORT — corrigé avec vrai formulaire multipart
+═══════════════════════════════════ -->
+<div class="modal fade" id="importModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0"
+             style="background:var(--card-bg-light);border:1px solid var(--border-color) !important;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold" style="color:var(--text-primary);">
+                    <i class="fas fa-file-import me-2" style="color:#64b4ff;"></i>
+                    Importer une liste de produits
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"
+                        style="filter:invert(1);opacity:0.5;"></button>
+            </div>
+            <div class="modal-body pt-3">
+                <p style="color:var(--text-secondary);font-size:0.9rem;">
+                    Choisissez un fichier CSV, Excel ou JSON contenant vos produits.
+                </p>
+
+                <!-- Formulaire réel — enctype multipart obligatoire -->
+                <form id="importForm"
+                      action="{{ path('app_produit_import') }}"
+                      method="POST"
+                      enctype="multipart/form-data">
+
+                    <div id="importDropZone" class="text-center py-4 rounded-3"
+                         style="border:2px dashed var(--border-color);cursor:pointer;transition:all 0.3s;"
+                         onclick="document.getElementById('importFile').click()"
+                         ondragover="event.preventDefault();this.style.borderColor='var(--emerald)';"
+                         ondragleave="this.style.borderColor='var(--border-color)';"
+                         ondrop="handleDrop(event)">
+                        <i class="fas fa-cloud-upload-alt fa-2x mb-2" style="color:var(--text-secondary);"></i>
+                        <p class="mb-1 fw-semibold" style="color:var(--text-primary);">Glissez votre fichier ici</p>
+                        <p class="mb-0 small" style="color:var(--text-secondary);">ou cliquez pour parcourir</p>
+                        <input type="file"
+                               id="importFile"
+                               name="importFile"
+                               accept=".csv,.xlsx,.xls,.json"
+                               class="d-none"
+                               onchange="handleFileSelect(this)">
+                    </div>
+                    <div id="importFileName" class="mt-2 small text-center"
+                         style="color:var(--emerald);display:none;"></div>
+
+                    <div class="d-flex gap-2 justify-content-center mt-3 flex-wrap">
+                        <span class="badge rounded-pill px-3 py-2"
+                              style="background:rgba(0,255,163,0.1);color:var(--emerald);font-size:0.75rem;">
+                            <i class="fas fa-file-csv me-1"></i> CSV
+                        </span>
+                        <span class="badge rounded-pill px-3 py-2"
+                              style="background:rgba(29,111,66,0.1);color:#1d6f42;font-size:0.75rem;">
+                            <i class="fas fa-file-excel me-1"></i> Excel (.xlsx, .xls)
+                        </span>
+                        <span class="badge rounded-pill px-3 py-2"
+                              style="background:rgba(240,165,0,0.1);color:#f0a500;font-size:0.75rem;">
+                            <i class="fas fa-file-code me-1"></i> JSON
+                        </span>
+                    </div>
+
+                </form>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-sm px-4"
+                        data-bs-dismiss="modal"
+                        style="background:transparent;border:1.5px solid var(--border-color);
+                               color:var(--text-secondary);border-radius:10px;">
+                    Annuler
+                </button>
+                <button type="button"
+                        class="btn btn-sm px-4 fw-semibold"
+                        id="importSubmitBtn"
+                        disabled
+                        onclick="document.getElementById('importForm').submit()"
+                        style="background:var(--emerald);color:#0b1329;border:none;border-radius:10px;
+                               opacity:0.5;transition:opacity 0.3s;">
+                    <i class="fas fa-upload me-1"></i> Importer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<style>
+    /* ════════════════════════════════════
+       NOVA SPLIT BUTTON
+    ════════════════════════════════════ */
+    .nova-split-btn {
+        position: relative;
+        display: inline-flex;
+        align-items: stretch;
+        border-radius: 14px;
+        overflow: visible;
+        border: 1.5px solid var(--emerald);
+        transition: box-shadow 0.3s ease;
+    }
+    .nova-split-btn:hover {
+        box-shadow: 0 0 0 3px rgba(0,255,163,0.15);
+    }
+    .nova-split-main {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0.5rem 1rem;
+        background: var(--emerald);
+        color: #0b1329;
+        font-weight: 600;
+        font-size: 0.9rem;
+        cursor: pointer;
+        border-radius: 12px 0 0 12px;
+        transition: background 0.2s, color 0.2s;
+        white-space: nowrap;
+        user-select: none;
+    }
+    .nova-split-main:hover { background: #00cc82; }
+    .nova-split-arrow {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        background: rgba(0,255,163,0.15);
+        color: var(--emerald);
+        cursor: pointer;
+        border-left: 1.5px solid rgba(0,255,163,0.3);
+        border-radius: 0 12px 12px 0;
+        transition: background 0.2s;
+        user-select: none;
+    }
+    .nova-split-arrow:hover { background: rgba(0,255,163,0.25); }
+    .nova-split-arrow i { transition: transform 0.3s ease; font-size: 0.75rem; }
+    .nova-split-menu {
+        position: absolute;
+        top: calc(100% + 8px);
+        right: 0;
+        min-width: 260px;
+        background: var(--card-bg-light);
+        border: 1.5px solid var(--border-color);
+        border-radius: 16px;
+        padding: 8px;
+        z-index: 1050;
+        opacity: 0;
+        transform: translateY(-8px) scale(0.97);
+        pointer-events: none;
+        transition: opacity 0.22s ease, transform 0.22s ease;
+        box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+    }
+    .nova-split-menu.open {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        pointer-events: all;
+    }
+    .nova-split-menu-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: background 0.15s;
+    }
+    .nova-split-menu-item:hover { background: var(--bg-body); }
+    .nova-split-menu-icon {
+        width: 36px; height: 36px; border-radius: 8px;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0; font-size: 0.95rem;
+    }
+    .nova-split-menu-label { font-weight: 600; font-size: 0.88rem; color: var(--text-primary); line-height: 1.3; }
+    .nova-split-menu-desc  { font-size: 0.75rem; color: var(--text-secondary); line-height: 1.3; }
+    .nova-split-menu-divider { height: 1px; background: var(--border-color); margin: 4px 0; opacity: 0.5; }
+
+    /* ═══════════════════════════════════════════════
+       UIVERSE ORBIT COMPACT
+    ═══════════════════════════════════════════════ */
+    .uiverse-orbit-container {
+        position: relative; display: flex; align-items: center; justify-content: center;
+        width: 100%; max-width: 220px; min-height: 100px; margin: 0 auto; padding: 5px;
+    }
+    .orbit-center-btn {
+        position: relative; z-index: 3;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        gap: 1px; padding: 0.4rem 1rem; border-radius: 50px;
+        background: var(--emerald); color: #0b1329; font-weight: 600; font-size: 0.7rem;
+        border: none; transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        cursor: pointer; user-select: none; min-width: 100px;
+        box-shadow: 0 3px 12px rgba(0,255,163,0.2); line-height: 1.3;
+    }
+    .orbit-center-btn:hover { background: #00cc82; transform: scale(1.05); box-shadow: 0 4px 18px rgba(0,255,163,0.3); }
+    .orbit-center-btn i { font-size: 0.85rem; }
+    .orbit-center-btn span { font-size: 0.7rem; }
+    .orbit-icon {
+        position: absolute; z-index: 2;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        width: 38px; height: 38px; border-radius: 50%;
+        background: var(--card-bg-light); border: 1.5px solid var(--border-color);
+        cursor: pointer; transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        opacity: 0; transform: scale(0.5); pointer-events: none;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .orbit-icon i { font-size: 0.85rem; color: var(--text-secondary); transition: color 0.3s ease; }
+    .orbit-label { font-size: 0.4rem; font-weight: 600; color: var(--text-secondary); margin-top: 1px; transition: color 0.3s ease; text-transform: uppercase; letter-spacing: 0.05em; }
+    .orbit-icon-1 { top: -2px; left: 50%; transform: translateX(-50%) scale(0.5); }
+    .orbit-icon-2 { top: 50%; right: -8px; transform: translateY(-50%) scale(0.5); }
+    .orbit-icon-3 { bottom: -2px; left: 50%; transform: translateX(-50%) scale(0.5); }
+    .orbit-icon-4 { top: 50%; left: -8px; transform: translateY(-50%) scale(0.5); }
+    .uiverse-orbit-container:hover .orbit-icon { opacity: 1; pointer-events: all; }
+    .uiverse-orbit-container:hover .orbit-icon-1 { transform: translateX(-50%) scale(1) translateY(-16px); }
+    .uiverse-orbit-container:hover .orbit-icon-2 { transform: translateY(-50%) scale(1) translateX(16px); }
+    .uiverse-orbit-container:hover .orbit-icon-3 { transform: translateX(-50%) scale(1) translateY(16px); }
+    .uiverse-orbit-container:hover .orbit-icon-4 { transform: translateY(-50%) scale(1) translateX(-16px); }
+    .orbit-icon:hover { transform: scale(1.15) !important; border-color: var(--emerald); box-shadow: 0 3px 15px rgba(0,255,163,0.15); }
+    .orbit-icon:hover i { color: var(--emerald); }
+    .orbit-icon:hover .orbit-label { color: var(--emerald); }
+    .orbit-icon-1:hover { border-color: #00ffa3; } .orbit-icon-1:hover i { color: #00ffa3; } .orbit-icon-1:hover .orbit-label { color: #00ffa3; }
+    .orbit-icon-2:hover { border-color: #1d6f42; } .orbit-icon-2:hover i { color: #1d6f42; } .orbit-icon-2:hover .orbit-label { color: #1d6f42; }
+    .orbit-icon-3:hover { border-color: #f0a500; } .orbit-icon-3:hover i { color: #f0a500; } .orbit-icon-3:hover .orbit-label { color: #f0a500; }
+    .orbit-icon-4:hover { border-color: #dc3545; } .orbit-icon-4:hover i { color: #dc3545; } .orbit-icon-4:hover .orbit-label { color: #dc3545; }
+    .orbit-icon.active { border-color: var(--emerald); background: rgba(0,255,163,0.1); box-shadow: 0 0 0 2px rgba(0,255,163,0.2); }
+    .orbit-icon.active i { color: var(--emerald); opacity: 1; }
+    .orbit-icon.active .orbit-label { color: var(--emerald); }
+
+    /* ════════════════════════════════════
+       TABLE & PAGINATION
+    ════════════════════════════════════ */
+    .table > :not(caption) > * > * { background-color: transparent !important; }
+    .table-hover tbody tr:hover { background: var(--bg-body) !important; }
+    .form-control:focus, .form-select:focus {
+        border-color: var(--emerald) !important;
+        box-shadow: 0 0 0 0.2rem rgba(0,255,163,0.15) !important;
+    }
+    .pagination { margin-bottom: 0; }
+    .page-link { transition: all 0.2s ease; }
+    .page-link:hover { background: var(--emerald) !important; color: #0b1329 !important; border-color: var(--emerald) !important; transform: translateY(-1px); }
+    .swal2-popup { border-radius: 16px !important; border: 1px solid var(--border-color) !important; background: var(--card-bg-light) !important; }
+    .swal2-title { color: var(--text-primary) !important; }
+    .swal2-html-container { color: var(--text-secondary) !important; }
+    .swal2-confirm, .swal2-cancel { border: none !important; border-radius: 50px !important; font-weight: 600 !important; padding: 0.6rem 1.5rem !important; transition: all 0.3s ease !important; }
+    .swal2-cancel { background: #6c757d !important; }
+    .swal2-actions { gap: 0.75rem !important; }
+    #importDropZone:hover { border-color: var(--emerald) !important; background: rgba(0,255,163,0.04); }
+
+    @media (max-width: 768px) {
+        .uiverse-orbit-container { min-height: 80px; max-width: 180px; }
+        .orbit-center-btn { min-width: 80px; padding: 0.35rem 0.8rem; font-size: 0.6rem; }
+        .orbit-center-btn i { font-size: 0.7rem; }
+        .orbit-center-btn span { font-size: 0.6rem; }
+        .orbit-icon { width: 32px; height: 32px; }
+        .orbit-icon i { font-size: 0.7rem; }
+        .orbit-label { font-size: 0.35rem; }
+        .orbit-icon-1 { top: 0px; } .orbit-icon-2 { right: -5px; } .orbit-icon-3 { bottom: 0px; } .orbit-icon-4 { left: -5px; }
+        .uiverse-orbit-container:hover .orbit-icon-1 { transform: translateX(-50%) scale(1) translateY(-12px); }
+        .uiverse-orbit-container:hover .orbit-icon-2 { transform: translateY(-50%) scale(1) translateX(12px); }
+        .uiverse-orbit-container:hover .orbit-icon-3 { transform: translateX(-50%) scale(1) translateY(12px); }
+        .uiverse-orbit-container:hover .orbit-icon-4 { transform: translateY(-50%) scale(1) translateX(-12px); }
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    /* ══════════════════════════════
+       FILTRES TABLEAU
+    ══════════════════════════════ */
+    const searchInput     = document.getElementById('searchInput');
+    const filterCategorie = document.getElementById('filterCategorie');
+    const sortSelect      = document.getElementById('sortSelect');
+    const tbody           = document.getElementById('produitTableBody');
+    const noResult        = document.getElementById('noResultRow');
+    const resultCount     = document.getElementById('resultCount');
+    const badgeCount      = document.getElementById('badgeCount');
+    const resetBtn        = document.getElementById('resetFilters');
+    const totalRows       = document.querySelectorAll('.produit-row').length;
+
+    function applyFilters() {
+        const search    = searchInput.value.trim().toLowerCase();
+        const categorie = filterCategorie.value.toLowerCase();
+        const sort      = sortSelect.value;
+
+        let rows = Array.from(document.querySelectorAll('.produit-row'));
+        rows.forEach(row => {
+            const nom = row.dataset.nom || '';
+            const sku = row.dataset.sku || '';
+            const cat = row.dataset.categorie || '';
+            const matchSearch    = !search    || nom.includes(search) || sku.includes(search);
+            const matchCategorie = !categorie || cat === categorie;
+            row.style.display = (matchSearch && matchCategorie) ? '' : 'none';
+        });
+
+        const visible = rows.filter(r => r.style.display !== 'none');
+        visible.sort((a, b) => {
+            switch (sort) {
+                case 'nom-asc':   return (a.dataset.nom||'').localeCompare(b.dataset.nom||'', 'fr');
+                case 'nom-desc':  return (b.dataset.nom||'').localeCompare(a.dataset.nom||'', 'fr');
+                case 'sku-asc':   return (a.dataset.sku||'').localeCompare(b.dataset.sku||'', 'fr');
+                case 'sku-desc':  return (b.dataset.sku||'').localeCompare(a.dataset.sku||'', 'fr');
+                case 'date-asc':  return (a.dataset.date||'').localeCompare(b.dataset.date||'');
+                case 'date-desc': return (b.dataset.date||'').localeCompare(a.dataset.date||'');
+                default: return 0;
+            }
+        });
+        visible.forEach(row => tbody.appendChild(row));
+
+        const count = visible.length;
+        badgeCount.textContent = count;
+        noResult.style.display = count === 0 ? '' : 'none';
+        resultCount.textContent = count === totalRows
+            ? `${count} produit${count > 1 ? 's' : ''} sur cette page`
+            : `${count} résultat${count > 1 ? 's' : ''} sur ${totalRows}`;
+        resetBtn.style.display = (search || categorie) ? 'inline-block' : 'none';
+    }
+
+    searchInput.addEventListener('input',      () => { filterCategorie.value = ''; applyFilters(); });
+    filterCategorie.addEventListener('change', () => { searchInput.value = '';     applyFilters(); });
+    sortSelect.addEventListener('change', applyFilters);
+    resetBtn.addEventListener('click', () => {
+        searchInput.value = ''; filterCategorie.value = ''; sortSelect.value = 'nom-asc';
+        applyFilters();
+    });
+    applyFilters();
+
+    /* ══════════════════════════════
+       SUPPRESSION SWEETALERT
+    ══════════════════════════════ */
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            const form = this.closest('form');
+            const name = this.dataset.produitName;
+            Swal.fire({
+                title: 'Confirmer la suppression',
+                html: `<div style="text-align:left;">
+                    <p style="color:var(--text-secondary);">
+                        Supprimer <strong style="color:var(--text-primary);">${name}</strong> ?
+                    </p>
+                    <p style="font-size:0.9rem;color:var(--text-secondary);">
+                        <i class="fas fa-exclamation-triangle" style="color:#dc3545;"></i>
+                        Cette action est <strong style="color:#dc3545;">irréversible</strong>.
+                    </p>
+                </div>`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: '<i class="fas fa-trash me-1"></i> Supprimer',
+                cancelButtonText: '<i class="fas fa-times me-1"></i> Annuler',
+                background: getComputedStyle(document.documentElement).getPropertyValue('--card-bg-light').trim() || '#fff',
+                color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#1a2744',
+                customClass: {
+                    popup: 'rounded-4',
+                    confirmButton: 'btn btn-danger px-4 py-2 rounded-pill',
+                    cancelButton: 'btn btn-secondary px-4 py-2 rounded-pill'
+                }
+            }).then(r => { if (r.isConfirmed) form.submit(); });
+        });
+    });
+
+    /* ══════════════════════════════
+       FERMER MENUS AU CLIC EXTÉRIEUR
+    ══════════════════════════════ */
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.nova-split-btn')) {
+            document.querySelectorAll('.nova-split-menu.open').forEach(m => {
+                m.classList.remove('open');
+                const arrow = m.closest('.nova-split-btn')?.querySelector('.nova-split-arrow i');
+                if (arrow) arrow.style.transform = '';
+            });
+        }
+    });
+
+    /* ══════════════════════════════
+       TOGGLE MENU SPLIT
+    ══════════════════════════════ */
+    window.toggleMenu = function(menuId) {
+        const menu   = document.getElementById(menuId);
+        const isOpen = menu.classList.contains('open');
+
+        document.querySelectorAll('.nova-split-menu.open').forEach(m => {
+            m.classList.remove('open');
+            const arrow = m.closest('.nova-split-btn')?.querySelector('.nova-split-arrow i');
+            if (arrow) arrow.style.transform = '';
+        });
+
+        if (!isOpen) {
+            menu.classList.add('open');
+            const arrow = menu.closest('.nova-split-btn')?.querySelector('.nova-split-arrow i');
+            if (arrow) arrow.style.transform = 'rotate(180deg)';
+        }
+    };
+
+    /* ══════════════════════════════
+       EXPORT ORBIT
+    ══════════════════════════════ */
+    let currentExportFormat = 'csv';
+
+    window.selectExportFormat = function(format, label, color) {
+        currentExportFormat = format;
+        const displayEl = document.getElementById('orbitFormatDisplay');
+        if (displayEl) displayEl.textContent = label.toUpperCase();
+
+        document.querySelectorAll('.orbit-icon').forEach((icon, index) => {
+            icon.classList.toggle('active', ['csv','excel','json','pdf'][index] === format);
+        });
+
+        const btn = document.getElementById('exportOrbitBtn');
+        if (btn) {
+            btn.style.background = color;
+            btn.style.color = format === 'pdf' ? 'white' : '#0b1329';
+        }
+    };
+
+    const orbitBtn = document.getElementById('exportOrbitBtn');
+    if (orbitBtn) {
+        orbitBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const labels = { csv: 'CSV', excel: 'Excel', json: 'JSON', pdf: 'PDF' };
+            const colors = { csv: '#00ffa3', excel: '#1d6f42', json: '#f0a500', pdf: '#dc3545' };
+            triggerExport(currentExportFormat, labels[currentExportFormat], colors[currentExportFormat]);
+        });
+    }
+
+    function buildExportUrl(format) {
+        const params = new URLSearchParams({ format });
+        const statut    = document.getElementById('exportStatut').value;
+        const categorie = document.getElementById('exportCategorie').value;
+        const search    = document.getElementById('exportSearch').value.trim();
+        if (statut)    params.append('statut', statut);
+        if (categorie) params.append('categorie', categorie);
+        if (search)    params.append('search', search);
+        return '{{ path("app_produit_export") }}?' + params.toString();
+    }
+
+    function triggerExport(format, label, color) {
+        const statut    = document.getElementById('exportStatut').value;
+        const categorie = document.getElementById('exportCategorie').value;
+        const search    = document.getElementById('exportSearch').value.trim();
+
+        const filterLabels = [];
+        if (statut)    filterLabels.push(`statut : <strong>${statut}</strong>`);
+        if (categorie) filterLabels.push(`catégorie sélectionnée`);
+        if (search)    filterLabels.push(`recherche : <strong>${search}</strong>`);
+
+        const desc = filterLabels.length > 0
+            ? `Filtres : ${filterLabels.join(', ')}.`
+            : `<strong>Tous les produits</strong> seront exportés.`;
+
+        const icons = { csv: '📄', excel: '📊', json: '🔧', pdf: '🖨️' };
+
+        Swal.fire({
+            title: `${icons[format] || '📁'} Exporter en ${label}`,
+            html: `<div style="text-align:left;padding:8px 0;"><p style="color:var(--text-secondary);">${desc}</p></div>`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: `<i class="fas fa-download me-1"></i> Télécharger ${label}`,
+            cancelButtonText: 'Annuler',
+            confirmButtonColor: color || '#00ffa3',
+            cancelButtonColor: '#6c757d',
+            background: getComputedStyle(document.documentElement).getPropertyValue('--card-bg-light').trim() || '#fff',
+            color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#1a2744',
+            customClass: {
+                popup: 'rounded-4',
+                confirmButton: 'btn fw-semibold px-4 py-2 rounded-pill',
+                cancelButton: 'btn btn-secondary px-4 py-2 rounded-pill'
+            }
+        }).then(result => {
+            if (result.isConfirmed) window.location.href = buildExportUrl(format);
+        });
+    }
+
+    /* ══════════════════════════════
+       MODAL IMPORT
+    ══════════════════════════════ */
+    window.openImportModal = function() {
+        // Réinitialise le formulaire avant ouverture
+        document.getElementById('importForm').reset();
+        document.getElementById('importFileName').style.display = 'none';
+        document.getElementById('importFileName').innerHTML = '';
+        const btn = document.getElementById('importSubmitBtn');
+        btn.disabled = true;
+        btn.style.opacity = '0.5';
+
+        const modal = new bootstrap.Modal(document.getElementById('importModal'));
+        modal.show();
+    };
+
+    window.handleFileSelect = function(input) {
+        if (input.files && input.files[0]) {
+            showImportFile(input.files[0]);
+        }
+    };
+
+    window.handleDrop = function(event) {
+        event.preventDefault();
+        const file = event.dataTransfer.files[0];
+        if (file) {
+            // Transfère le fichier dans l'input pour que le formulaire le récupère
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            document.getElementById('importFile').files = dataTransfer.files;
+            showImportFile(file);
+        }
+        event.currentTarget.style.borderColor = 'var(--border-color)';
+    };
+
+    function showImportFile(file) {
+        const allowed = ['csv', 'xlsx', 'xls', 'json'];
+        const ext = file.name.split('.').pop().toLowerCase();
+
+        if (!allowed.includes(ext)) {
+            Swal.fire({
+                title: 'Format non supporté',
+                text: `Le fichier « ${file.name} » n'est pas accepté. Utilisez CSV, Excel (.xlsx/.xls) ou JSON.`,
+                icon: 'error',
+                confirmButtonColor: '#dc3545',
+                background: getComputedStyle(document.documentElement).getPropertyValue('--card-bg-light').trim() || '#fff',
+                color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#1a2744',
+            });
+            return;
+        }
+
+        const nameDiv  = document.getElementById('importFileName');
+        const submitBtn = document.getElementById('importSubmitBtn');
+        nameDiv.style.display = 'block';
+        nameDiv.innerHTML = `<i class="fas fa-file-check me-1"></i> ${file.name} (${(file.size / 1024).toFixed(1)} Ko)`;
+        submitBtn.disabled = false;
+        submitBtn.style.opacity = '1';
+    }
+
+    selectExportFormat('csv', 'CSV', '#00ffa3');
+});
+</script>
+{% endblock %}

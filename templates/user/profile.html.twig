@@ -1,0 +1,435 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}NOVAWIN - Mon Profil{% endblock %}
+
+{% block page_title %}Mon Profil{% endblock %}
+{% block page_subtitle %}Modifiez vos informations personnelles{% endblock %}
+
+{% block body %}
+<div class="container-fluid p-0">
+    <!-- Messages Flash -->
+    {% for message in app.flashes('success') %}
+        <div class="alert alert-success alert-dismissible fade show" role="alert" style="border-radius: 12px; border: none; background: rgba(40, 167, 69, 0.12); color: #28a745;">
+            <i class="fas fa-check-circle me-2"></i> {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" style="filter: var(--btn-close-filter);"></button>
+        </div>
+    {% endfor %}
+
+    {% for message in app.flashes('error') %}
+        <div class="alert alert-danger alert-dismissible fade show" role="alert" style="border-radius: 12px; border: none; background: rgba(220, 53, 69, 0.12); color: #dc3545;">
+            <i class="fas fa-exclamation-circle me-2"></i> {{ message|raw }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" style="filter: var(--btn-close-filter);"></button>
+        </div>
+    {% endfor %}
+
+    <!-- Formulaire -->
+    <div class="card border-0 shadow-sm rounded-4" style="background: var(--card-bg-light); border: 1px solid var(--border-color);">
+        <div class="card-body p-4">
+            <div class="row">
+                <!-- Photo de profil -->
+                <div class="col-md-3 text-center mb-4 mb-md-0">
+                    <div class="position-relative d-inline-block">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center mx-auto"
+                             style="width: 120px; height: 120px; background: linear-gradient(135deg, var(--emerald), var(--accent-color)); color: #fff; font-weight: 700; font-size: 3rem;">
+                            {{ user.prenom|first ~ user.nom|first }}
+                        </div>
+                        <div class="position-absolute bottom-0 end-0 bg-success rounded-circle p-1 border border-2 border-white"
+                             style="width: 28px; height: 28px;">
+                            <i class="fas fa-check text-white" style="font-size: 12px;"></i>
+                        </div>
+                    </div>
+                    <h5 class="mt-3 fw-bold" style="color: var(--text-primary);">{{ user.prenom }} {{ user.nom }}</h5>
+                    <span class="badge px-3 py-2 rounded-pill" style="background: {{ user.role == 'ROLE_SUPER_ADMIN' ? 'rgba(220, 53, 69, 0.15)' : user.role == 'ROLE_ADMIN' ? 'rgba(255, 193, 7, 0.15)' : 'rgba(23, 162, 184, 0.15)' }}; color: {{ user.role == 'ROLE_SUPER_ADMIN' ? '#dc3545' : user.role == 'ROLE_ADMIN' ? '#ffc107' : '#17a2b8' }};">
+                        <i class="fas fa-{{ user.role == 'ROLE_SUPER_ADMIN' ? 'crown' : user.role == 'ROLE_ADMIN' ? 'shield-halved' : 'user' }} me-1"></i>
+                        {{ user.role|replace({'ROLE_': ''})|capitalize }}
+                    </span>
+                    <div class="mt-3 small text-muted" style="color: var(--text-secondary);">
+                        <i class="fas fa-calendar-alt me-1"></i> Membre depuis {{ user.dateCreation|date('d/m/Y') }}
+                    </div>
+                </div>
+
+                <!-- Formulaire -->
+                <div class="col-md-9">
+                    <form id="profileForm" method="POST" action="{{ path('app_user_profile') }}" novalidate>
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="prenom" style="color: var(--text-secondary); font-weight: 600; font-size: 0.85rem;">
+                                        <i class="fas fa-user me-1"></i> Prénom
+                                    </label>
+                                    <div class="input-group" id="prenomGroup">
+                                        <span class="input-group-text"><i class="fas fa-user-circle"></i></span>
+                                        <input type="text" class="form-control" id="prenom" name="prenom"
+                                               value="{{ user.prenom }}"
+                                               style="background: var(--bg-body); border-color: var(--border-color); color: var(--text-primary); border-radius: 10px;">
+                                    </div>
+                                    <div class="error-message" id="prenomError" style="color: #dc3545; font-size: 0.8rem; margin-top: 0.25rem; display: none;">
+                                        Le prénom doit contenir au moins 2 caractères.
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="nom" style="color: var(--text-secondary); font-weight: 600; font-size: 0.85rem;">
+                                        <i class="fas fa-user me-1"></i> Nom
+                                    </label>
+                                    <div class="input-group" id="nomGroup">
+                                        <span class="input-group-text"><i class="fas fa-user-circle"></i></span>
+                                        <input type="text" class="form-control" id="nom" name="nom"
+                                               value="{{ user.nom }}"
+                                               style="background: var(--bg-body); border-color: var(--border-color); color: var(--text-primary); border-radius: 10px;">
+                                    </div>
+                                    <div class="error-message" id="nomError" style="color: #dc3545; font-size: 0.8rem; margin-top: 0.25rem; display: none;">
+                                        Le nom doit contenir au moins 2 caractères.
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-group">
+                                    <label for="email" style="color: var(--text-secondary); font-weight: 600; font-size: 0.85rem;">
+                                        <i class="fas fa-envelope me-1"></i> Adresse email
+                                    </label>
+                                    <div class="input-group" id="emailGroup">
+                                        <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                                        <input type="email" class="form-control" id="email" name="email"
+                                               value="{{ user.email }}"
+                                               style="background: var(--bg-body); border-color: var(--border-color); color: var(--text-primary); border-radius: 10px;">
+                                        <button type="button" class="btn" id="sendCodeBtn"
+                                                style="background: var(--emerald); color: #0b1329; border: none; border-radius: 0 10px 10px 0; padding: 0.6rem 1.2rem; font-weight: 600;"
+                                                onclick="sendVerificationCode()">
+                                            <i class="fas fa-paper-plane"></i> Vérifier
+                                        </button>
+                                    </div>
+                                    <div class="error-message" id="emailError" style="color: #dc3545; font-size: 0.8rem; margin-top: 0.25rem; display: none;">
+                                        Veuillez saisir une adresse email valide.
+                                    </div>
+                                    <div id="emailInfo" style="color: var(--text-secondary); font-size: 0.75rem; margin-top: 0.25rem;">
+                                        <i class="fas fa-info-circle me-1"></i> Si vous changez votre email, un code de vérification vous sera envoyé.
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12" id="verificationCodeContainer" style="display: none;">
+                                <div class="form-group">
+                                    <label for="verification_code" style="color: var(--text-secondary); font-weight: 600; font-size: 0.85rem;">
+                                        <i class="fas fa-shield-alt me-1"></i> Code de vérification
+                                    </label>
+                                    <div class="input-group" id="codeGroup">
+                                        <span class="input-group-text"><i class="fas fa-key"></i></span>
+                                        <input type="text" class="form-control" id="verification_code" name="verification_code"
+                                               placeholder="Entrez le code reçu par email"
+                                               style="background: var(--bg-body); border-color: var(--border-color); color: var(--text-primary); border-radius: 10px;">
+                                    </div>
+                                    <div class="error-message" id="codeError" style="color: #dc3545; font-size: 0.8rem; margin-top: 0.25rem; display: none;">
+                                        Le code de vérification est obligatoire pour changer d'email.
+                                    </div>
+                                    <div id="codeInfo" style="color: var(--text-secondary); font-size: 0.75rem; margin-top: 0.25rem; display: none;">
+                                        <i class="fas fa-clock me-1"></i> Un code a été envoyé à votre nouvelle adresse email. Valable 15 minutes.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr style="border-color: var(--border-color);">
+
+                            <div class="col-12">
+                                <div class="form-group">
+                                    <label for="current_password" style="color: var(--text-secondary); font-weight: 600; font-size: 0.85rem;">
+                                        <i class="fas fa-lock me-1"></i> Mot de passe actuel <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="input-group" id="currentPasswordGroup">
+                                        <span class="input-group-text"><i class="fas fa-key"></i></span>
+                                        <input type="password" class="form-control" id="current_password" name="current_password"
+                                               placeholder="Entrez votre mot de passe actuel"
+                                               style="background: var(--bg-body); border-color: var(--border-color); color: var(--text-primary); border-radius: 10px;">
+                                        <button type="button" class="password-toggle" onclick="togglePassword('current_password')"
+                                                style="background: transparent; border: none; padding: 0.6rem 1rem; color: var(--text-secondary);">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                    <div class="error-message" id="currentPasswordError" style="color: #dc3545; font-size: 0.8rem; margin-top: 0.25rem; display: none;">
+                                        Le mot de passe actuel est obligatoire pour toute modification.
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="new_password" style="color: var(--text-secondary); font-weight: 600; font-size: 0.85rem;">
+                                        <i class="fas fa-key me-1"></i> Nouveau mot de passe
+                                    </label>
+                                    <div class="input-group" id="newPasswordGroup">
+                                        <span class="input-group-text"><i class="fas fa-key"></i></span>
+                                        <input type="password" class="form-control" id="new_password" name="new_password"
+                                               placeholder="Laissez vide pour conserver"
+                                               style="background: var(--bg-body); border-color: var(--border-color); color: var(--text-primary); border-radius: 10px;">
+                                        <button type="button" class="password-toggle" onclick="togglePassword('new_password')"
+                                                style="background: transparent; border: none; padding: 0.6rem 1rem; color: var(--text-secondary);">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                    <div class="error-message" id="newPasswordError" style="color: #dc3545; font-size: 0.8rem; margin-top: 0.25rem; display: none;">
+                                        Le mot de passe doit contenir au moins 6 caractères.
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="confirm_password" style="color: var(--text-secondary); font-weight: 600; font-size: 0.85rem;">
+                                        <i class="fas fa-check-circle me-1"></i> Confirmer
+                                    </label>
+                                    <div class="input-group" id="confirmPasswordGroup">
+                                        <span class="input-group-text"><i class="fas fa-check"></i></span>
+                                        <input type="password" class="form-control" id="confirm_password" name="confirm_password"
+                                               placeholder="Confirmez le nouveau mot de passe"
+                                               style="background: var(--bg-body); border-color: var(--border-color); color: var(--text-primary); border-radius: 10px;">
+                                        <button type="button" class="password-toggle" onclick="togglePassword('confirm_password')"
+                                                style="background: transparent; border: none; padding: 0.6rem 1rem; color: var(--text-secondary);">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                    <div class="error-message" id="confirmPasswordError" style="color: #dc3545; font-size: 0.8rem; margin-top: 0.25rem; display: none;">
+                                        Les mots de passe ne correspondent pas.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 d-flex gap-3">
+                            <button type="submit" class="btn px-4 py-2 fw-semibold"
+                                    style="background: var(--emerald); color: #0b1329; border: none; border-radius: 12px; transition: all 0.3s ease;">
+                                <i class="fas fa-save me-2"></i> Enregistrer les modifications
+                            </button>
+                            <a href="{{ path('app_user') }}" class="btn px-4 py-2 fw-semibold"
+                               style="background: transparent; color: var(--text-secondary); border: 1.5px solid var(--border-color); border-radius: 12px; transition: all 0.3s ease;">
+                                <i class="fas fa-times me-2"></i> Annuler
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ============================================
+    // TOGGLE PASSWORD
+    // ============================================
+    function togglePassword(inputId) {
+        const input = document.getElementById(inputId);
+        const icon = input.nextElementSibling.querySelector('i');
+
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        } else {
+            input.type = 'password';
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        }
+    }
+
+    // ============================================
+    // ENVOYER LE CODE DE VÉRIFICATION
+    // ============================================
+    function sendVerificationCode() {
+        const emailInput = document.getElementById('email');
+        const email = emailInput.value.trim();
+        const originalEmail = "{{ user.email }}";
+        const sendBtn = document.getElementById('sendCodeBtn');
+
+        if (email === originalEmail) {
+            document.getElementById('verificationCodeContainer').style.display = 'none';
+            document.getElementById('emailInfo').innerHTML = '<i class="fas fa-info-circle me-1"></i> Aucun changement d\'email détecté.';
+            return;
+        }
+
+        if (!validateEmail(email)) {
+            document.getElementById('emailError').style.display = 'block';
+            document.getElementById('emailGroup').classList.add('error');
+            return;
+        }
+
+        document.getElementById('emailError').style.display = 'none';
+        document.getElementById('emailGroup').classList.remove('error');
+
+        // Désactiver le bouton
+        sendBtn.disabled = true;
+        sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Envoi...';
+
+        fetch("{{ path('app_user_send_verification') }}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: `email=${encodeURIComponent(email)}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('verificationCodeContainer').style.display = 'block';
+                document.getElementById('codeInfo').style.display = 'block';
+                document.getElementById('codeInfo').innerHTML = '<i class="fas fa-check-circle me-1" style="color: #28a745;"></i> ' + data.message;
+                document.getElementById('emailInfo').innerHTML = '<i class="fas fa-envelope me-1" style="color: var(--emerald);"></i> Un code de vérification a été envoyé.';
+            } else {
+                alert(data.message);
+            }
+        })
+        .catch(error => {
+            alert('Erreur lors de l\'envoi du code. Veuillez réessayer.');
+        })
+        .finally(() => {
+            sendBtn.disabled = false;
+            sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Vérifier';
+        });
+    }
+
+    function validateEmail(email) {
+        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return re.test(email);
+    }
+
+    // ============================================
+    // VALIDATION DU FORMULAIRE (non HTML5)
+    // ============================================
+    document.getElementById('profileForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const prenom = document.getElementById('prenom');
+        const nom = document.getElementById('nom');
+        const email = document.getElementById('email');
+        const currentPassword = document.getElementById('current_password');
+        const newPassword = document.getElementById('new_password');
+        const confirmPassword = document.getElementById('confirm_password');
+        const verificationCode = document.getElementById('verification_code');
+        const originalEmail = "{{ user.email }}";
+
+        let isValid = true;
+
+        // Reset errors
+        document.querySelectorAll('.input-group').forEach(g => g.classList.remove('error'));
+        document.querySelectorAll('.error-message').forEach(e => e.style.display = 'none');
+
+        // Valider prénom
+        if (!prenom.value.trim() || prenom.value.trim().length < 2) {
+            document.getElementById('prenomGroup').classList.add('error');
+            document.getElementById('prenomError').style.display = 'block';
+            isValid = false;
+        }
+
+        // Valider nom
+        if (!nom.value.trim() || nom.value.trim().length < 2) {
+            document.getElementById('nomGroup').classList.add('error');
+            document.getElementById('nomError').style.display = 'block';
+            isValid = false;
+        }
+
+        // Valider email
+        if (!validateEmail(email.value.trim())) {
+            document.getElementById('emailGroup').classList.add('error');
+            document.getElementById('emailError').style.display = 'block';
+            isValid = false;
+        }
+
+        // Si l'email change, le code de vérification est obligatoire
+        if (email.value.trim() !== originalEmail) {
+            if (!verificationCode.value.trim()) {
+                document.getElementById('codeGroup').classList.add('error');
+                document.getElementById('codeError').style.display = 'block';
+                isValid = false;
+            }
+        }
+
+        // Valider le mot de passe actuel
+        if (!currentPassword.value.trim()) {
+            document.getElementById('currentPasswordGroup').classList.add('error');
+            document.getElementById('currentPasswordError').style.display = 'block';
+            isValid = false;
+        }
+
+        // Si un nouveau mot de passe est saisi
+        if (newPassword.value.trim()) {
+            if (newPassword.value.trim().length < 6) {
+                document.getElementById('newPasswordGroup').classList.add('error');
+                document.getElementById('newPasswordError').style.display = 'block';
+                isValid = false;
+            }
+            if (newPassword.value.trim() !== confirmPassword.value.trim()) {
+                document.getElementById('confirmPasswordGroup').classList.add('error');
+                document.getElementById('confirmPasswordError').style.display = 'block';
+                isValid = false;
+            }
+        }
+
+        if (isValid) {
+            this.submit();
+        }
+    });
+
+    // ============================================
+    // REAL-TIME VALIDATION CLEANUP
+    // ============================================
+    document.querySelectorAll('input').forEach(input => {
+        input.addEventListener('input', function() {
+            const group = this.closest('.input-group');
+            const errorId = this.id + 'Error';
+            const error = document.getElementById(errorId);
+            if (group) group.classList.remove('error');
+            if (error) error.style.display = 'none';
+        });
+    });
+</script>
+
+<style>
+    .input-group.error {
+        border-color: #dc3545 !important;
+        box-shadow: 0 0 0 4px rgba(220, 53, 69, 0.1) !important;
+    }
+    .input-group.error .form-control {
+        border-color: #dc3545 !important;
+    }
+    .input-group {
+        border-radius: 10px;
+        border: 2px solid var(--border-color);
+        transition: all 0.3s ease;
+        background: var(--bg-body);
+    }
+    .input-group:focus-within {
+        border-color: var(--emerald);
+        box-shadow: 0 0 0 4px rgba(0, 255, 163, 0.08);
+    }
+    .input-group .form-control {
+        border: none !important;
+    }
+    .input-group .form-control:focus {
+        box-shadow: none !important;
+    }
+    .input-group-text {
+        background: transparent !important;
+        border: none !important;
+        color: var(--text-secondary) !important;
+    }
+    .password-toggle {
+        background: transparent !important;
+        border: none !important;
+        color: var(--text-secondary) !important;
+    }
+    .password-toggle:hover {
+        color: var(--emerald) !important;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 0.3rem;
+    }
+    #sendCodeBtn {
+        transition: all 0.3s ease;
+    }
+    #sendCodeBtn:hover {
+        transform: scale(1.02);
+    }
+    #sendCodeBtn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+</style>
+{% endblock %}

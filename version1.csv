@@ -1,0 +1,4 @@
+SKU;Nom;Caracteristiques;ImageUrl;DescriptionOriginale;DescriptionGeneree;Statut;Categorie
+PRD-004;Montre Connectée Pro;GPS, moniteur cardiaque, écran AMOLED;https://exemple.com/montre-pro.jpg;Montre sportive haut de gamme avec GPS intégré et suivi cardiaque 24h/24.;Montre connectée Pro avec GPS et moniteur cardiaque.;actif;Accessoires
+PRD-006;Sac à Dos Urbain;"15L, compartiment ordinateur 15"", renforcé";https://exemple.com/sac-urbain.jpg;Sac à dos moderne avec compartiment dédié pour ordinateur portable 15 pouces.;Sac à dos urbain 15L avec compartiment ordinateur.;actif;Accessoires
+PRD-008;Lunettes de Soleil;Polarisées, style aviateur, verres UV400;https://exemple.com/lunettes-soleil.jpg;Lunettes de soleil polarisées style aviateur avec protection UV400.;Lunettes de soleil polarisées, style aviateur, protection UV400.;rupture;Accessoires

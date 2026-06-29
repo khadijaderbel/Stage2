@@ -1,0 +1,666 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}NOVAWIN - Gestion des Utilisateurs{% endblock %}
+
+{% block page_title %}Gestion des Utilisateurs{% endblock %}
+{% block page_subtitle %}Configurez les droits d'accès et surveillez l'activité de votre équipe administrative.{% endblock %}
+
+{% block body %}
+<div class="container-fluid p-0">
+    <!-- Messages Flash -->
+    {% for message in app.flashes('success') %}
+        <div class="alert alert-success alert-dismissible fade show" role="alert" style="border-radius: 12px; border: none; background: rgba(40, 167, 69, 0.12); color: #28a745;">
+            <i class="fas fa-check-circle me-2"></i> {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" style="filter: var(--btn-close-filter);"></button>
+        </div>
+    {% endfor %}
+
+    {% for message in app.flashes('error') %}
+        <div class="alert alert-danger alert-dismissible fade show" role="alert" style="border-radius: 12px; border: none; background: rgba(220, 53, 69, 0.12); color: #dc3545;">
+            <i class="fas fa-exclamation-circle me-2"></i> {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" style="filter: var(--btn-close-filter);"></button>
+        </div>
+    {% endfor %}
+
+    <!-- En-tête -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-4">
+        <div>
+            <h2 class="mb-1" style="color: var(--text-primary);">
+                <i class="fas fa-users me-2" style="color: var(--emerald);"></i>Membres Actifs
+                <span class="badge rounded-pill ms-2" style="background: var(--emerald); color: #0b1329; font-size: 0.75rem;" id="totalCount">{{ users|length }}</span>
+            </h2>
+            <p class="text-muted mb-0" style="color: var(--text-secondary);">
+                <i class="fas fa-info-circle me-1"></i> Liste des utilisateurs enregistrés dans le système
+            </p>
+        </div>
+    </div>
+
+    <!-- Barre de recherche et filtres -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4" style="background: var(--card-bg-light); border: 1px solid var(--border-color);">
+        <div class="card-body p-3">
+            <div class="row g-3 align-items-center">
+                <div class="col-md-6 col-lg-7">
+                    <div class="position-relative">
+                        <i class="fas fa-search position-absolute top-50 start-0 translate-middle-y ms-3" style="color: var(--text-secondary); font-size: 0.9rem;"></i>
+                        <input type="text" id="searchInput" class="form-control ps-5"
+                               placeholder="Rechercher par nom, prénom ou email..."
+                               style="background: var(--bg-body); border-color: var(--border-color); color: var(--text-primary); border-radius: 10px; padding: 0.6rem 1rem 0.6rem 2.8rem; transition: all 0.3s ease;">
+                    </div>
+                </div>
+                <div class="col-md-3 col-lg-3">
+                    <select id="statusFilter" class="form-select"
+                            style="background: var(--bg-body); border-color: var(--border-color); color: var(--text-primary); border-radius: 10px; padding: 0.6rem 1rem; transition: all 0.3s ease;">
+                        <option value="all">📊 Tous les statuts</option>
+                        <option value="active">🟢 Actifs</option>
+                        <option value="inactive">🔴 Inactifs</option>
+                    </select>
+                </div>
+                <div class="col-md-3 col-lg-2">
+                    <div class="d-flex gap-2 justify-content-md-end">
+                        <span class="badge rounded-pill px-3 py-2" style="background: rgba(40, 167, 69, 0.12); color: #28a745; font-size: 0.75rem; border: 1px solid rgba(40, 167, 69, 0.2);">
+                            <i class="fas fa-circle me-1" style="font-size: 0.5rem;"></i>
+                            <span id="activeCount">0</span>
+                        </span>
+                        <span class="badge rounded-pill px-3 py-2" style="background: rgba(220, 53, 69, 0.12); color: #dc3545; font-size: 0.75rem; border: 1px solid rgba(220, 53, 69, 0.2);">
+                            <i class="fas fa-circle me-1" style="font-size: 0.5rem;"></i>
+                            <span id="inactiveCount">0</span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tableau des utilisateurs -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden" style="background: var(--card-bg-light); border: 1px solid var(--border-color);">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" style="color: var(--text-primary);">
+                    <thead style="background: var(--bg-body);">
+                        <tr>
+                            <th class="px-4 py-3 text-uppercase small fw-bold" style="font-size: 0.65rem; letter-spacing: 1px; color: var(--text-secondary);">
+                                <i class="fas fa-user me-2"></i>Prénom
+                            </th>
+                            <th class="px-4 py-3 text-uppercase small fw-bold" style="font-size: 0.65rem; letter-spacing: 1px; color: var(--text-secondary);">
+                                <i class="fas fa-user me-2"></i>Nom
+                            </th>
+                            <th class="px-4 py-3 text-uppercase small fw-bold" style="font-size: 0.65rem; letter-spacing: 1px; color: var(--text-secondary);">
+                                <i class="fas fa-envelope me-2"></i>Email
+                            </th>
+                            <th class="px-4 py-3 text-uppercase small fw-bold" style="font-size: 0.65rem; letter-spacing: 1px; color: var(--text-secondary);">
+                                <i class="fas fa-user-tag me-2"></i>Rôle
+                            </th>
+                            <th class="px-4 py-3 text-uppercase small fw-bold" style="font-size: 0.65rem; letter-spacing: 1px; color: var(--text-secondary);">
+                                <i class="fas fa-circle me-2"></i>Statut
+                            </th>
+                            <th class="px-4 py-3 text-uppercase small fw-bold text-end" style="font-size: 0.65rem; letter-spacing: 1px; color: var(--text-secondary);">
+                                <i class="fas fa-tools me-2"></i>Actions
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody">
+                        {% if users is empty %}
+                            <tr id="emptyRow">
+                                <td colspan="6" class="text-center py-5" style="color: var(--text-secondary);">
+                                    <i class="fas fa-users fa-3x d-block mb-3" style="color: var(--text-secondary); opacity: 0.5;"></i>
+                                    <p class="mb-0">Aucun utilisateur enregistré pour le moment.</p>
+                                </td>
+                            </tr>
+                        {% else %}
+                            {% for user in users %}
+                                <tr class="border-bottom user-row" style="border-color: var(--border-color) !important;"
+                                    data-id="{{ user.id }}"
+                                    data-prenom="{{ user.prenom }}"
+                                    data-nom="{{ user.nom }}"
+                                    data-email="{{ user.email }}"
+                                    data-role="{{ user.role }}"
+                                    data-actif="{{ user.actif ? 'true' : 'false' }}">
+                                    <td class="px-4 py-3" style="color: var(--text-primary);">
+                                        <div class="d-flex align-items-center">
+                                            <div class="rounded-circle d-flex align-items-center justify-content-center me-3"
+                                                 style="width: 36px; height: 36px; background: linear-gradient(135deg, var(--emerald), var(--accent-color)); color: #fff; font-weight: 700; font-size: 0.85rem; flex-shrink: 0;">
+                                                {{ user.prenom|first }}
+                                            </div>
+                                            {{ user.prenom }}
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3" style="color: var(--text-primary);">
+                                        {{ user.nom }}
+                                    </td>
+                                    <td class="px-4 py-3" style="color: var(--text-secondary);">
+                                        <i class="fas fa-envelope me-2 opacity-50"></i>
+                                        {{ user.email }}
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        {% set roleColors = {
+                                            'ROLE_SUPER_ADMIN': 'danger',
+                                            'ROLE_ADMIN': 'warning',
+                                            'ROLE_USER': 'info'
+                                        } %}
+                                        {% set roleIcons = {
+                                            'ROLE_SUPER_ADMIN': 'crown',
+                                            'ROLE_ADMIN': 'shield-halved',
+                                            'ROLE_USER': 'user'
+                                        } %}
+                                        {% set roleColor = roleColors[user.role]|default('secondary') %}
+                                        <span class="badge px-3 py-2 rounded-pill fw-semibold role-badge"
+                                              style="font-size: 0.7rem;
+                                                     background: {{ roleColor == 'danger' ? 'rgba(220, 53, 69, 0.15)' : roleColor == 'warning' ? 'rgba(255, 193, 7, 0.15)' : 'rgba(23, 162, 184, 0.15)' }};
+                                                     color: {{ roleColor == 'danger' ? '#dc3545' : roleColor == 'warning' ? '#ffc107' : '#17a2b8' }};">
+                                            <i class="fas fa-{{ roleIcons[user.role]|default('user') }} me-1"></i>
+                                            {{ user.role|replace({'ROLE_': ''})|capitalize }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        {% if user.actif %}
+                                            <span class="badge px-3 py-2 rounded-pill fw-semibold status-badge"
+                                                  style="font-size: 0.7rem; background: rgba(40, 167, 69, 0.12); color: #28a745;">
+                                                <i class="fas fa-circle me-1" style="font-size: 0.5rem;"></i> Actif
+                                            </span>
+                                        {% else %}
+                                            <span class="badge px-3 py-2 rounded-pill fw-semibold status-badge"
+                                                  style="font-size: 0.7rem; background: rgba(220, 53, 69, 0.12); color: #dc3545;">
+                                                <i class="fas fa-circle me-1" style="font-size: 0.5rem;"></i> Inactif
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-4 py-3 text-end">
+                                        <div class="d-flex justify-content-end gap-2">
+                                            {% set currentUser = app.user %}
+                                            {% set canEdit = false %}
+                                            {% set canDelete = false %}
+
+                                            {% if is_granted('ROLE_SUPER_ADMIN') %}
+                                                {% set canEdit = true %}
+                                                {% set canDelete = true %}
+                                            {% elseif is_granted('ROLE_ADMIN') and user.role != 'ROLE_SUPER_ADMIN' %}
+                                                {% set canEdit = true %}
+                                                {% set canDelete = true %}
+                                            {% endif %}
+
+                                            {% if user.id == currentUser.id %}
+                                                {% set canEdit = false %}
+                                                {% set canDelete = false %}
+                                            {% endif %}
+
+                                            <!-- Bouton Modifier -->
+                                            {% if canEdit %}
+                                                <a href="{{ path('app_user_edit', {'id': user.id}) }}"
+                                                   class="btn btn-sm rounded-circle edit-btn"
+                                                   style="width: 34px; height: 34px; border: 1.5px solid var(--border-color); color: var(--text-secondary); background: transparent; transition: all 0.3s ease;"
+                                                   onmouseover="this.style.borderColor='var(--emerald)'; this.style.color='var(--emerald)';"
+                                                   onmouseout="this.style.borderColor='var(--border-color)'; this.style.color='var(--text-secondary)';"
+                                                   title="Modifier l'utilisateur">
+                                                    <i class="fas fa-pen" style="font-size: 0.8rem;"></i>
+                                                </a>
+                                            {% else %}
+                                                <button class="btn btn-sm rounded-circle"
+                                                        style="width: 34px; height: 34px; border: 1.5px solid var(--border-color); color: var(--text-secondary); background: transparent; opacity: 0.4; cursor: not-allowed;"
+                                                        title="Vous ne pouvez pas modifier cet utilisateur" disabled>
+                                                    <i class="fas fa-pen" style="font-size: 0.8rem;"></i>
+                                                </button>
+                                            {% endif %}
+
+                                            <!-- Bouton Changer Statut -->
+                                            {% if canEdit %}
+                                                <button class="btn btn-sm rounded-circle status-btn"
+                                                        style="width: 34px; height: 34px; border: 1.5px solid var(--border-color); color: var(--text-secondary); background: transparent; transition: all 0.3s ease;"
+                                                        onmouseover="this.style.borderColor='var(--emerald)'; this.style.color='var(--emerald)';"
+                                                        onmouseout="this.style.borderColor='var(--border-color)'; this.style.color='var(--text-secondary)';"
+                                                        data-user-id="{{ user.id }}"
+                                                        data-user-name="{{ user.prenom }} {{ user.nom }}"
+                                                        data-user-status="{{ user.actif ? 'actif' : 'inactif' }}"
+                                                        title="{% if user.actif %}Désactiver{% else %}Activer{% endif %} l'utilisateur">
+                                                    <i class="fas fa-{% if user.actif %}pause{% else %}play{% endif %}" style="font-size: 0.8rem;"></i>
+                                                </button>
+                                            {% else %}
+                                                <button class="btn btn-sm rounded-circle"
+                                                        style="width: 34px; height: 34px; border: 1.5px solid var(--border-color); color: var(--text-secondary); background: transparent; opacity: 0.4; cursor: not-allowed;"
+                                                        title="Vous ne pouvez pas modifier le statut de cet utilisateur" disabled>
+                                                    <i class="fas fa-{% if user.actif %}pause{% else %}play{% endif %}" style="font-size: 0.8rem;"></i>
+                                                </button>
+                                            {% endif %}
+
+                                            <!-- Bouton Supprimer -->
+                                            {% if canDelete %}
+                                                <button class="btn btn-sm rounded-circle delete-btn"
+                                                        style="width: 34px; height: 34px; border: 1.5px solid var(--border-color); color: var(--text-secondary); background: transparent; transition: all 0.3s ease;"
+                                                        onmouseover="this.style.borderColor='#dc3545'; this.style.color='#dc3545';"
+                                                        onmouseout="this.style.borderColor='var(--border-color)'; this.style.color='var(--text-secondary)';"
+                                                        data-user-id="{{ user.id }}"
+                                                        data-user-name="{{ user.prenom }} {{ user.nom }}"
+                                                        title="Supprimer l'utilisateur">
+                                                    <i class="fas fa-trash" style="font-size: 0.8rem;"></i>
+                                                </button>
+                                            {% else %}
+                                                <button class="btn btn-sm rounded-circle"
+                                                        style="width: 34px; height: 34px; border: 1.5px solid var(--border-color); color: var(--text-secondary); background: transparent; opacity: 0.4; cursor: not-allowed;"
+                                                        title="Vous ne pouvez pas supprimer cet utilisateur" disabled>
+                                                    <i class="fas fa-trash" style="font-size: 0.8rem;"></i>
+                                                </button>
+                                            {% endif %}
+
+                                            <!-- Formulaire caché pour la suppression -->
+                                            <form id="delete-form-{{ user.id }}" action="{{ path('app_user_delete', {'id': user.id}) }}" method="POST" style="display: none;">
+                                                <input type="hidden" name="_token" value="{{ csrf_token('delete_user_' ~ user.id) }}">
+                                            </form>
+
+                                            <!-- Formulaire caché pour le changement de statut -->
+                                            <form id="status-form-{{ user.id }}" action="{{ path('app_user_toggle_status', {'id': user.id}) }}" method="POST" style="display: none;">
+                                                <input type="hidden" name="_token" value="{{ csrf_token('toggle_status_' ~ user.id) }}">
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SweetAlert2 CDN -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // ============================================
+        // INITIALISATION DES ÉVÉNEMENTS
+        // ============================================
+        function initEventListeners() {
+            // Suppression
+            document.querySelectorAll('.delete-btn:not([disabled])').forEach(button => {
+                button.removeEventListener('click', handleDelete);
+                button.addEventListener('click', handleDelete);
+            });
+
+            // Changement de statut
+            document.querySelectorAll('.status-btn:not([disabled])').forEach(button => {
+                button.removeEventListener('click', handleStatus);
+                button.addEventListener('click', handleStatus);
+            });
+        }
+
+        // ============================================
+        // GESTION DE LA SUPPRESSION
+        // ============================================
+        function handleDelete(e) {
+            const button = e.currentTarget;
+            const userId = button.dataset.userId;
+            const userName = button.dataset.userName;
+
+            Swal.fire({
+                title: 'Confirmer la suppression',
+                html: `
+                    <div style="text-align: left; color: var(--text-secondary);">
+                        <p>Êtes-vous sûr de vouloir supprimer l'utilisateur <strong style="color: var(--text-primary);">${userName}</strong> ?</p>
+                        <p style="font-size: 0.9rem; margin-top: 0.5rem;">
+                            <i class="fas fa-exclamation-triangle" style="color: #dc3545;"></i>
+                            Cette action est <strong style="color: #dc3545;">irréversible</strong> et supprimera définitivement toutes les données associées.
+                        </p>
+                    </div>
+                `,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: '<i class="fas fa-trash me-2"></i>Oui, supprimer',
+                cancelButtonText: '<i class="fas fa-times me-2"></i>Annuler',
+                background: getComputedStyle(document.documentElement).getPropertyValue('--card-bg-light').trim() || '#ffffff',
+                color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#1a2744',
+                buttonsStyling: true,
+                reverseButtons: false,
+                customClass: {
+                    popup: 'rounded-4',
+                    confirmButton: 'btn btn-danger px-4 py-2 rounded-pill',
+                    cancelButton: 'btn btn-secondary px-4 py-2 rounded-pill'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    document.getElementById(`delete-form-${userId}`).submit();
+                }
+            });
+        }
+
+        // ============================================
+        // GESTION DU CHANGEMENT DE STATUT
+        // ============================================
+        function handleStatus(e) {
+            const button = e.currentTarget;
+            const userId = button.dataset.userId;
+            const userName = button.dataset.userName;
+            const currentStatus = button.dataset.userStatus;
+            const newStatus = currentStatus === 'actif' ? 'désactiver' : 'activer';
+            const newStatusLabel = currentStatus === 'actif' ? 'Inactif' : 'Actif';
+            const icon = currentStatus === 'actif' ? 'fa-pause' : 'fa-play';
+            const color = currentStatus === 'actif' ? '#dc3545' : '#28a745';
+
+            Swal.fire({
+                title: `Confirmer le changement de statut`,
+                html: `
+                    <div style="text-align: left; color: var(--text-secondary);">
+                        <p>Êtes-vous sûr de vouloir <strong style="color: ${color};">${newStatus}</strong> l'utilisateur <strong style="color: var(--text-primary);">${userName}</strong> ?</p>
+                        <div style="margin-top: 0.75rem; padding: 0.75rem; background: var(--bg-body); border-radius: 8px; border: 1px solid var(--border-color);">
+                            <span style="font-size: 0.85rem;">
+                                <i class="fas fa-circle" style="color: ${currentStatus === 'actif' ? '#28a745' : '#dc3545'}; font-size: 0.5rem;"></i>
+                                Statut actuel : <strong>${currentStatus === 'actif' ? 'Actif' : 'Inactif'}</strong>
+                                <i class="fas fa-arrow-right mx-2" style="color: var(--text-secondary);"></i>
+                                <i class="fas fa-circle" style="color: ${color}; font-size: 0.5rem;"></i>
+                                Nouveau statut : <strong style="color: ${color};">${newStatusLabel}</strong>
+                            </span>
+                        </div>
+                    </div>
+                `,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: color,
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: `<i class="fas ${icon} me-2"></i>Oui, ${newStatus}`,
+                cancelButtonText: '<i class="fas fa-times me-2"></i>Annuler',
+                background: getComputedStyle(document.documentElement).getPropertyValue('--card-bg-light').trim() || '#ffffff',
+                color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#1a2744',
+                buttonsStyling: true,
+                reverseButtons: false,
+                customClass: {
+                    popup: 'rounded-4',
+                    confirmButton: `btn px-4 py-2 rounded-pill`,
+                    cancelButton: 'btn btn-secondary px-4 py-2 rounded-pill'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    document.getElementById(`status-form-${userId}`).submit();
+                }
+            });
+        }
+
+        // ============================================
+        // RECHERCHE ET FILTRE DYNAMIQUE (AJAX)
+        // ============================================
+        const searchInput = document.getElementById('searchInput');
+        const statusFilter = document.getElementById('statusFilter');
+        const usersTableBody = document.getElementById('usersTableBody');
+        const totalCount = document.getElementById('totalCount');
+        const activeCount = document.getElementById('activeCount');
+        const inactiveCount = document.getElementById('inactiveCount');
+
+        let debounceTimer;
+
+        function fetchUsers() {
+            const search = searchInput.value.trim();
+            const status = statusFilter.value;
+
+            usersTableBody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="text-center py-4">
+                        <div class="spinner-border text-emerald" role="status">
+                            <span class="visually-hidden">Chargement...</span>
+                        </div>
+                        <p class="mt-2 text-muted" style="color: var(--text-secondary);">Recherche en cours...</p>
+                    </td>
+                </tr>
+            `;
+
+            fetch(`{{ path('app_user_search') }}?search=${encodeURIComponent(search)}&status=${status}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Erreur réseau');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    totalCount.textContent = data.total;
+                    activeCount.textContent = data.activeCount;
+                    inactiveCount.textContent = data.inactiveCount;
+
+                    if (data.users.length === 0) {
+                        usersTableBody.innerHTML = `
+                            <tr>
+                                <td colspan="6" class="text-center py-5" style="color: var(--text-secondary);">
+                                    <i class="fas fa-search fa-3x d-block mb-3" style="color: var(--text-secondary); opacity: 0.5;"></i>
+                                    <p class="mb-0">Aucun utilisateur ne correspond à votre recherche.</p>
+                                </td>
+                            </tr>
+                        `;
+                    } else {
+                        let html = '';
+                        data.users.forEach(user => {
+                            const isSuperAdmin = user.role === 'ROLE_SUPER_ADMIN';
+                            const roleColor = isSuperAdmin ? 'danger' : user.role === 'ROLE_ADMIN' ? 'warning' : 'info';
+                            const roleIcon = isSuperAdmin ? 'crown' : user.role === 'ROLE_ADMIN' ? 'shield-halved' : 'user';
+                            const roleDisplay = user.role.replace('ROLE_', '').replace('_', ' ').toUpperCase();
+
+                            const isCurrentUser = user.isCurrentUser || false;
+                            const canEdit = !isCurrentUser && ({{ is_granted('ROLE_SUPER_ADMIN') ? 'true' : 'false' }} || ({{ is_granted('ROLE_ADMIN') ? 'true' : 'false' }} && !isSuperAdmin));
+                            const canDelete = canEdit;
+
+                            html += `
+                                <tr class="border-bottom user-row" style="border-color: var(--border-color) !important;">
+                                    <td class="px-4 py-3" style="color: var(--text-primary);">
+                                        <div class="d-flex align-items-center">
+                                            <div class="rounded-circle d-flex align-items-center justify-content-center me-3"
+                                                 style="width: 36px; height: 36px; background: linear-gradient(135deg, var(--emerald), var(--accent-color)); color: #fff; font-weight: 700; font-size: 0.85rem; flex-shrink: 0;">
+                                                ${user.initial}
+                                            </div>
+                                            ${user.prenom}
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3" style="color: var(--text-primary);">
+                                        ${user.nom}
+                                    </td>
+                                    <td class="px-4 py-3" style="color: var(--text-secondary);">
+                                        <i class="fas fa-envelope me-2 opacity-50"></i>
+                                        ${user.email}
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="badge px-3 py-2 rounded-pill fw-semibold"
+                                              style="font-size: 0.7rem;
+                                                     background: ${roleColor === 'danger' ? 'rgba(220, 53, 69, 0.15)' : roleColor === 'warning' ? 'rgba(255, 193, 7, 0.15)' : 'rgba(23, 162, 184, 0.15)'};
+                                                     color: ${roleColor === 'danger' ? '#dc3545' : roleColor === 'warning' ? '#ffc107' : '#17a2b8'};">
+                                            <i class="fas fa-${roleIcon} me-1"></i>
+                                            ${roleDisplay}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        ${user.actif
+                                            ? `<span class="badge px-3 py-2 rounded-pill fw-semibold" style="font-size: 0.7rem; background: rgba(40, 167, 69, 0.12); color: #28a745;">
+                                                <i class="fas fa-circle me-1" style="font-size: 0.5rem;"></i> Actif
+                                               </span>`
+                                            : `<span class="badge px-3 py-2 rounded-pill fw-semibold" style="font-size: 0.7rem; background: rgba(220, 53, 69, 0.12); color: #dc3545;">
+                                                <i class="fas fa-circle me-1" style="font-size: 0.5rem;"></i> Inactif
+                                               </span>`
+                                        }
+                                    </td>
+                                    <td class="px-4 py-3 text-end">
+                                        <div class="d-flex justify-content-end gap-2">
+                                            ${canEdit
+                                                ? `<a href="/user/edit/${user.id}" class="btn btn-sm rounded-circle edit-btn" style="width: 34px; height: 34px; border: 1.5px solid var(--border-color); color: var(--text-secondary); background: transparent; transition: all 0.3s ease;" onmouseover="this.style.borderColor='var(--emerald)'; this.style.color='var(--emerald)';" onmouseout="this.style.borderColor='var(--border-color)'; this.style.color='var(--text-secondary)';" title="Modifier l'utilisateur">
+                                                    <i class="fas fa-pen" style="font-size: 0.8rem;"></i>
+                                                </a>`
+                                                : `<button class="btn btn-sm rounded-circle" style="width: 34px; height: 34px; border: 1.5px solid var(--border-color); color: var(--text-secondary); background: transparent; opacity: 0.4; cursor: not-allowed;" disabled>
+                                                    <i class="fas fa-pen" style="font-size: 0.8rem;"></i>
+                                                </button>`
+                                            }
+
+                                            ${canEdit
+                                                ? `<button class="btn btn-sm rounded-circle status-btn" style="width: 34px; height: 34px; border: 1.5px solid var(--border-color); color: var(--text-secondary); background: transparent; transition: all 0.3s ease;" onmouseover="this.style.borderColor='var(--emerald)'; this.style.color='var(--emerald)';" onmouseout="this.style.borderColor='var(--border-color)'; this.style.color='var(--text-secondary)';" data-user-id="${user.id}" data-user-name="${user.prenom} ${user.nom}" data-user-status="${user.actif ? 'actif' : 'inactif'}" title="${user.actif ? 'Désactiver' : 'Activer'} l'utilisateur">
+                                                    <i class="fas fa-${user.actif ? 'pause' : 'play'}" style="font-size: 0.8rem;"></i>
+                                                </button>`
+                                                : `<button class="btn btn-sm rounded-circle" style="width: 34px; height: 34px; border: 1.5px solid var(--border-color); color: var(--text-secondary); background: transparent; opacity: 0.4; cursor: not-allowed;" disabled>
+                                                    <i class="fas fa-${user.actif ? 'pause' : 'play'}" style="font-size: 0.8rem;"></i>
+                                                </button>`
+                                            }
+
+                                            ${canDelete
+                                                ? `<button class="btn btn-sm rounded-circle delete-btn" style="width: 34px; height: 34px; border: 1.5px solid var(--border-color); color: var(--text-secondary); background: transparent; transition: all 0.3s ease;" onmouseover="this.style.borderColor='#dc3545'; this.style.color='#dc3545';" onmouseout="this.style.borderColor='var(--border-color)'; this.style.color='var(--text-secondary)';" data-user-id="${user.id}" data-user-name="${user.prenom} ${user.nom}" title="Supprimer l'utilisateur">
+                                                    <i class="fas fa-trash" style="font-size: 0.8rem;"></i>
+                                                </button>`
+                                                : `<button class="btn btn-sm rounded-circle" style="width: 34px; height: 34px; border: 1.5px solid var(--border-color); color: var(--text-secondary); background: transparent; opacity: 0.4; cursor: not-allowed;" disabled>
+                                                    <i class="fas fa-trash" style="font-size: 0.8rem;"></i>
+                                                </button>`
+                                            }
+
+                                            <form id="delete-form-${user.id}" action="/user/delete/${user.id}" method="POST" style="display: none;">
+                                                <input type="hidden" name="_token" value="{{ csrf_token('delete_user_ID_PLACEHOLDER') }}".replace('ID_PLACEHOLDER', user.id)>
+                                            </form>
+                                            <form id="status-form-${user.id}" action="/user/toggle-status/${user.id}" method="POST" style="display: none;">
+                                                <input type="hidden" name="_token" value="{{ csrf_token('toggle_status_ID_PLACEHOLDER') }}".replace('ID_PLACEHOLDER', user.id)>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `;
+                        });
+                        usersTableBody.innerHTML = html;
+                        initEventListeners();
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur lors de la recherche:', error);
+                    usersTableBody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="text-center py-5" style="color: var(--text-secondary);">
+                                <i class="fas fa-exclamation-triangle fa-3x d-block mb-3" style="color: #dc3545; opacity: 0.5;"></i>
+                                <p class="mb-0">Une erreur est survenue lors de la recherche.</p>
+                            </td>
+                        </tr>
+                    `;
+                });
+        }
+
+        // Événements avec debounce pour la recherche
+        searchInput.addEventListener('input', function() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(fetchUsers, 300);
+        });
+
+        statusFilter.addEventListener('change', function() {
+            fetchUsers();
+        });
+
+        // Initialisation
+        initEventListeners();
+        fetchUsers();
+    });
+</script>
+
+<style>
+    /* Styles pour le mode sombre/clair */
+    :root {
+        --btn-close-filter: none;
+    }
+
+    [data-theme="dark"] {
+        --btn-close-filter: invert(1);
+    }
+
+    [data-theme="dark"] .btn-close {
+        filter: var(--btn-close-filter);
+    }
+
+    .table > :not(caption) > * > * {
+        background-color: transparent !important;
+    }
+
+    /* Card styles */
+    .card {
+        transition: all 0.3s ease;
+        background: var(--card-bg-light) !important;
+        border-color: var(--border-color) !important;
+    }
+
+    /* Alert styles */
+    .alert {
+        border-radius: 12px;
+        border: none;
+        padding: 0.75rem 1.25rem;
+    }
+
+    /* SweetAlert2 personnalisation */
+    .swal2-popup {
+        border-radius: 16px !important;
+        border: 1px solid var(--border-color) !important;
+        background: var(--card-bg-light) !important;
+    }
+
+    .swal2-title {
+        color: var(--text-primary) !important;
+    }
+
+    .swal2-html-container {
+        color: var(--text-secondary) !important;
+    }
+
+    .swal2-confirm {
+        border: none !important;
+        border-radius: 50px !important;
+        font-weight: 600 !important;
+        padding: 0.6rem 1.5rem !important;
+        transition: all 0.3s ease !important;
+    }
+
+    .swal2-confirm:hover {
+        transform: scale(1.02) !important;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2) !important;
+    }
+
+    .swal2-cancel {
+        background: #6c757d !important;
+        border: none !important;
+        border-radius: 50px !important;
+        font-weight: 600 !important;
+        padding: 0.6rem 1.5rem !important;
+        transition: all 0.3s ease !important;
+    }
+
+    .swal2-cancel:hover {
+        transform: scale(1.02) !important;
+    }
+
+    .swal2-actions {
+        gap: 0.75rem !important;
+    }
+
+    /* Badge styles */
+    .badge {
+        font-weight: 600;
+    }
+
+    /* Table hover */
+    .table-hover tbody tr:hover {
+        background: var(--bg-body) !important;
+    }
+
+    /* Search and filter styles */
+    #searchInput:focus, #statusFilter:focus {
+        border-color: var(--emerald) !important;
+        box-shadow: 0 0 0 0.2rem rgba(0, 255, 163, 0.15) !important;
+    }
+
+    #searchInput::placeholder {
+        color: var(--text-secondary);
+        opacity: 0.7;
+    }
+
+    /* Spinner */
+    .spinner-border.text-emerald {
+        color: var(--emerald) !important;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .table-responsive {
+            font-size: 0.85rem;
+        }
+        .px-4 {
+            padding-left: 0.75rem !important;
+            padding-right: 0.75rem !important;
+        }
+        .py-3 {
+            padding-top: 0.5rem !important;
+            padding-bottom: 0.5rem !important;
+        }
+    }
+</style>
+{% endblock %}

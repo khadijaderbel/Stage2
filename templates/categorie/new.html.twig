@@ -1,0 +1,254 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}NOVAWIN - Nouvelle Catégorie{% endblock %}
+{% block page_title %}Nouvelle Catégorie{% endblock %}
+{% block page_subtitle %}Créez une nouvelle catégorie pour votre catalogue{% endblock %}
+
+{% block body %}
+<div class="container-fluid p-0">
+
+    {% for message in app.flashes('success') %}
+        <div class="alert alert-success alert-dismissible fade show" role="alert"
+             style="border-radius: 12px; border: none; background: rgba(40,167,69,0.12); color: #28a745;">
+            <i class="fas fa-check-circle me-2"></i> {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    {% endfor %}
+
+    {% for message in app.flashes('error') %}
+        <div class="alert alert-danger alert-dismissible fade show" role="alert"
+             style="border-radius: 12px; border: none; background: rgba(220,53,69,0.12); color: #dc3545;">
+            <i class="fas fa-exclamation-circle me-2"></i> {{ message|raw }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    {% endfor %}
+
+    <div class="card border-0 shadow-sm rounded-4"
+         style="background: var(--card-bg-light); border: 1px solid var(--border-color);">
+        <div class="card-body p-4">
+
+            {{ form_start(form, {'attr': {'novalidate': 'novalidate', 'id': 'categorieForm'}}) }}
+
+                <div class="row g-4">
+                    <div class="col-12">
+                        <div class="form-group">
+                            {{ form_label(form.nom, null, {
+                                'label_attr': {
+                                    'class': 'form-label small fw-semibold',
+                                    'style': 'color: var(--text-secondary);'
+                                }
+                            }) }}
+                            {{ form_widget(form.nom, {
+                                'attr': {
+                                    'class': 'form-control',
+                                    'style': 'background: var(--bg-body); border-color: var(--border-color); color: var(--text-primary); border-radius: 10px; padding: 0.6rem 1rem;',
+                                    'placeholder': 'Ex: Audio, Accessoires...',
+                                    'id': 'nomInput'
+                                }
+                            }) }}
+                            <small style="color: var(--text-secondary);">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Doit commencer par une majuscule et ne pas commencer par un chiffre.
+                            </small>
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <div class="form-group">
+                            {{ form_label(form.description, null, {
+                                'label_attr': {
+                                    'class': 'form-label small fw-semibold',
+                                    'style': 'color: var(--text-secondary);'
+                                }
+                            }) }}
+                            {{ form_widget(form.description, {
+                                'attr': {
+                                    'class': 'form-control',
+                                    'style': 'background: var(--bg-body); border-color: var(--border-color); color: var(--text-primary); border-radius: 10px; padding: 0.6rem 1rem;',
+                                    'rows': 3,
+                                    'placeholder': 'Description de la catégorie (optionnelle)'
+                                }
+                            }) }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 d-flex gap-3">
+                    <button type="submit" class="btn px-4 py-2 fw-semibold"
+                            style="background: var(--emerald); color: #0b1329; border: none; border-radius: 12px;">
+                        <i class="fas fa-save me-2"></i> Créer la catégorie
+                    </button>
+                    <a href="{{ path('app_categorie_index') }}" class="btn px-4 py-2 fw-semibold"
+                       style="background: transparent; color: var(--text-secondary); border: 1.5px solid var(--border-color); border-radius: 12px;">
+                        <i class="fas fa-times me-2"></i> Annuler
+                    </a>
+                </div>
+
+            {{ form_end(form) }}
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    // Sélecteur robuste : fonctionne que Symfony écrase l'id ou non
+    const nomInput = document.getElementById('nomInput')
+                  || document.querySelector('input[name="categorie[nom]"]')
+                  || document.querySelector('input[name$="[nom]"]');
+    const form = document.getElementById('categorieForm');
+
+    /* ── Helpers SweetAlert ── */
+    function buildErrorList(errors) {
+        return errors.map(e =>
+            `<div style="padding:4px 0;display:flex;align-items:center;gap:8px;">
+                <i class="fas fa-times-circle" style="color:#dc3545;font-size:14px;"></i>
+                <span>${e.trim()}</span>
+             </div>`
+        ).join('');
+    }
+
+    function swalError(title, errorList) {
+        return Swal.fire({
+            title,
+            html: `<div style="text-align:left;padding:10px 0;">
+                <p style="color:#6c757d;margin-bottom:12px;">
+                    <i class="fas fa-exclamation-triangle" style="color:#ffc107;"></i>
+                    Veuillez corriger les erreurs suivantes :
+                </p>
+                <div style="background:#f8f9fa;border-radius:8px;padding:12px 16px;border-left:4px solid #dc3545;">
+                    ${errorList}
+                </div>
+            </div>`,
+            icon: 'error',
+            confirmButtonColor: '#dc3545',
+            confirmButtonText: '🔧 Corriger',
+            background: getComputedStyle(document.documentElement).getPropertyValue('--card-bg-light').trim() || '#fff',
+            color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#1a2744',
+            customClass: { popup: 'rounded-4', confirmButton: 'btn btn-danger px-4 py-2 rounded-pill' }
+        });
+    }
+
+    /* ── Messages flash serveur ── */
+    document.querySelectorAll('.alert-danger').forEach(function (alert) {
+        const raw = alert.innerText.trim();
+        alert.style.display = 'none';
+        if (!raw) return;
+        const errors = raw.split('|').map(e => e.trim()).filter(e => e.length > 0);
+        swalError('⚠️ Erreur de validation', buildErrorList(errors))
+            .then(() => { if (nomInput) { nomInput.focus(); nomInput.select(); } });
+    });
+
+    document.querySelectorAll('.alert-success').forEach(function (alert) {
+        const message = alert.innerText.trim();
+        alert.style.display = 'none';
+        if (!message) return;
+        Swal.fire({
+            title: '✅ Succès', text: message, icon: 'success',
+            confirmButtonColor: '#28a745', confirmButtonText: 'OK',
+            background: getComputedStyle(document.documentElement).getPropertyValue('--card-bg-light').trim() || '#fff',
+            color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#1a2744',
+            timer: 3000, timerProgressBar: true,
+            customClass: { popup: 'rounded-4', confirmButton: 'btn btn-success px-4 py-2 rounded-pill' }
+        });
+    });
+
+    /* ── Validation côté client ── */
+    function validateNom(value) {
+        const errors = [];
+        const v = value ? value.trim() : '';
+        if (v === '') {
+            errors.push('Le nom est obligatoire.');
+        } else {
+            if (v.length < 2)
+                errors.push('Le nom doit contenir au moins 2 caractères.');
+            if (!/^[A-ZÀÂÄÉÈÊËÎÏÔÖÙÛÜŸÆŒ]/u.test(v))
+                errors.push('Le nom doit commencer par une majuscule.');
+            if (/^[0-9]/.test(v))
+                errors.push('Le nom ne peut pas commencer par un chiffre.');
+            if (!/^[A-Za-zÀ-ÿ0-9\s\-]+$/u.test(v))
+                errors.push('Le nom ne doit contenir que des lettres, chiffres, espaces et tirets.');
+        }
+        return errors;
+    }
+
+    /* ── Soumission ── */
+    if (form) {
+        form.addEventListener('submit', function (e) {
+            if (!nomInput) return; // laisser Symfony valider si input introuvable
+            const errors = validateNom(nomInput.value);
+            if (errors.length === 0) return; // ✅ valide → on soumet
+            e.preventDefault();
+            swalError('⚠️ Validation du formulaire', buildErrorList(errors))
+                .then(() => { nomInput.focus(); nomInput.select(); });
+        });
+    }
+
+    /* ── Feedback visuel temps réel ── */
+    function applyStyle(input, errors, empty) {
+        if (empty) {
+            input.style.borderColor = 'var(--border-color)';
+            input.style.boxShadow = 'none';
+        } else if (errors.length > 0) {
+            input.style.borderColor = '#dc3545';
+            input.style.boxShadow = '0 0 0 0.2rem rgba(220,53,69,0.15)';
+        } else {
+            input.style.borderColor = '#28a745';
+            input.style.boxShadow = '0 0 0 0.2rem rgba(40,167,69,0.15)';
+        }
+    }
+
+    if (nomInput) {
+        // État initial (page edit : champ pré-rempli)
+        if (nomInput.value.trim() !== '') {
+            applyStyle(nomInput, validateNom(nomInput.value), false);
+        }
+
+        nomInput.addEventListener('input', function () {
+            applyStyle(this, validateNom(this.value), this.value.trim() === '');
+        });
+
+        nomInput.addEventListener('focus', function () {
+            this.style.borderColor = 'var(--emerald)';
+            this.style.boxShadow = '0 0 0 0.2rem rgba(0,255,163,0.15)';
+        });
+
+        nomInput.addEventListener('blur', function () {
+            if (this.value.trim() === '') {
+                applyStyle(this, [], true);
+            } else {
+                applyStyle(this, validateNom(this.value), false);
+            }
+        });
+    }
+});
+</script>
+
+<style>
+    .form-control:focus {
+        border-color: var(--emerald) !important;
+        box-shadow: 0 0 0 0.2rem rgba(0,255,163,0.15) !important;
+    }
+    [data-theme="dark"] .btn-close { filter: invert(1); }
+    .swal2-popup {
+        border-radius: 16px !important;
+        border: 1px solid var(--border-color) !important;
+        background: var(--card-bg-light) !important;
+    }
+    .swal2-title { color: var(--text-primary) !important; }
+    .swal2-html-container { color: var(--text-secondary) !important; }
+    .swal2-confirm {
+        border: none !important;
+        border-radius: 50px !important;
+        font-weight: 600 !important;
+        padding: 0.6rem 1.5rem !important;
+        transition: all 0.3s ease !important;
+    }
+    .swal2-confirm:hover {
+        transform: scale(1.02) !important;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2) !important;
+    }
+    .alert { display: none !important; }
+</style>
+{% endblock %}

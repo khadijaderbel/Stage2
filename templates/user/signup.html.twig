@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NOVAWIN - Inscription</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --emerald: #00ffa3;
+            --accent-color: #4a90d9;
+            --primary-dark: #0b1329;
+            --primary-light: #1a2744;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0b1329 0%, #1a2744 50%, #2c3e7a 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+        }
+
+        .signup-container {
+            width: 100%;
+            max-width: 480px;
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .signup-card {
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 24px;
+            padding: 2.5rem 2.5rem 2rem;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .signup-logo {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .signup-logo .logo-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, var(--primary-dark), var(--primary-light));
+            border-radius: 16px;
+            color: var(--emerald);
+            font-size: 2rem;
+            margin-bottom: 0.75rem;
+            box-shadow: 0 8px 25px rgba(0, 255, 163, 0.15);
+        }
+
+        .signup-logo h1 {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 700;
+            font-size: 1.6rem;
+            color: var(--primary-dark);
+            margin: 0;
+            letter-spacing: 1px;
+        }
+
+        .signup-logo h1 span {
+            color: var(--emerald);
+        }
+
+        .signup-logo p {
+            color: #6c757d;
+            font-size: 0.9rem;
+            margin: 0.2rem 0 0;
+        }
+
+        .alert {
+            border-radius: 12px;
+            border: none;
+            padding: 0.75rem 1.25rem;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .alert-success {
+            background: rgba(40, 167, 69, 0.12);
+            color: #28a745;
+        }
+
+        .alert-danger {
+            background: rgba(220, 53, 69, 0.12);
+            color: #dc3545;
+        }
+
+        .alert .btn-close {
+            filter: invert(1);
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-group label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #495057;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.4rem;
+            display: block;
+        }
+
+        .form-group .input-group {
+            border-radius: 12px;
+            overflow: hidden;
+            border: 2px solid #e9ecef;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+            background: #fff;
+        }
+
+        .form-group .input-group:focus-within {
+            border-color: var(--emerald);
+            box-shadow: 0 0 0 4px rgba(0, 255, 163, 0.1);
+        }
+
+        .form-group .input-group-text {
+            background: transparent;
+            border: none;
+            color: #6c757d;
+            padding: 0.6rem 0.8rem 0.6rem 1rem;
+            font-size: 0.9rem;
+        }
+
+        .form-group .form-control {
+            border: none;
+            padding: 0.6rem 1rem 0.6rem 0;
+            background: transparent;
+            font-size: 0.95rem;
+            color: #1a2744;
+        }
+
+        .form-group .form-control:focus {
+            box-shadow: none;
+        }
+
+        .form-group .form-control::placeholder {
+            color: #adb5bd;
+            font-size: 0.85rem;
+        }
+
+        .password-toggle {
+            cursor: pointer;
+            padding: 0.6rem 1rem 0.6rem 0;
+            color: #6c757d;
+            transition: color 0.3s ease;
+            background: transparent;
+            border: none;
+        }
+
+        .password-toggle:hover {
+            color: var(--emerald);
+        }
+
+        .form-check {
+            margin: 1.25rem 0;
+        }
+
+        .form-check-input {
+            border: 2px solid #ced4da;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+            margin-top: 0.15rem;
+            flex-shrink: 0;
+        }
+
+        .form-check-input:checked {
+            background-color: var(--emerald);
+            border-color: var(--emerald);
+        }
+
+        .form-check-label {
+            font-size: 0.85rem;
+            color: #495057;
+            cursor: pointer;
+            padding-left: 0.25rem;
+        }
+
+        .form-check-label a {
+            color: var(--emerald);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .form-check-label a:hover {
+            text-decoration: underline;
+        }
+
+        .btn-primary-custom {
+            width: 100%;
+            padding: 0.85rem;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--primary-dark), var(--primary-light));
+            color: #fff;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(11, 19, 41, 0.3);
+        }
+
+        .btn-primary-custom:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(11, 19, 41, 0.4);
+        }
+
+        .btn-primary-custom:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary-custom .btn-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .signup-footer {
+            text-align: center;
+            margin-top: 1.5rem;
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+
+        .signup-footer a {
+            color: var(--emerald);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .signup-footer a:hover {
+            text-decoration: underline;
+        }
+
+        .signup-bottom {
+            text-align: center;
+            margin-top: 1.5rem;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.75rem;
+        }
+
+        .signup-bottom strong {
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .security-badge {
+            text-align: center;
+            margin-top: 1rem;
+            font-size: 0.7rem;
+            color: #6c757d;
+        }
+
+        .security-badge i {
+            color: #28a745;
+            margin-right: 0.3rem;
+        }
+
+        @media (max-width: 576px) {
+            .signup-card {
+                padding: 1.75rem 1.5rem;
+            }
+            .signup-logo h1 {
+                font-size: 1.3rem;
+            }
+            .form-group .form-control {
+                font-size: 0.85rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="signup-container">
+        <div class="signup-card">
+            <div class="signup-logo">
+                 <img src="{{ asset('images/logo1.png') }}"
+                     alt="Logo NOVAWIN"
+                     class="logo-icon"
+                     onerror="this.src='https://via.placeholder.com/140x50/0b1329/00ffa3?text=NOVAWIN'">
+
+                <p>Console de Contrôle Administrative</p>
+            </div>
+
+            {% for message in app.flashes('success') %}
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="fas fa-check-circle me-2"></i> {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+
+            {% for message in app.flashes('error') %}
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="fas fa-exclamation-circle me-2"></i> {{ message|raw }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+
+            <div class="text-center mb-4">
+                <h5 class="fw-bold" style="color: var(--primary-dark);">
+                    <i class="fas fa-user-plus me-2" style="color: var(--emerald);"></i>Rejoindre l'équipe
+                </h5>
+                <p class="text-muted small" style="font-size: 0.85rem;">Enregistrez un nouveau compte modérateur.</p>
+            </div>
+
+            <form method="POST" action="{{ path('app_signup') }}">
+                <input type="hidden" name="_token" value="{{ csrf_token('signup') }}">
+
+                <div class="form-group">
+                    <label for="prenom"><i class="fas fa-user me-1"></i> PRÉNOM</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-user-circle"></i></span>
+                        <input type="text" class="form-control" id="prenom" name="prenom"
+                               placeholder="Alexandre"
+                               value="{{ app.request.get('prenom') }}"
+                               required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="nom"><i class="fas fa-user me-1"></i> NOM</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-user-circle"></i></span>
+                        <input type="text" class="form-control" id="nom" name="nom"
+                               placeholder="Vincent"
+                               value="{{ app.request.get('nom') }}"
+                               required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="email"><i class="fas fa-envelope me-1"></i> ADRESSE EMAIL</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                        <input type="email" class="form-control" id="email" name="email"
+                               placeholder="nom@novawin.com"
+                               value="{{ app.request.get('email') }}"
+                               required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="password"><i class="fas fa-lock me-1"></i> MOT DE PASSE</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-key"></i></span>
+                        <input type="password" class="form-control" id="password" name="password"
+                               placeholder="••••••••" required minlength="6">
+                        <button type="button" class="password-toggle" onclick="togglePassword('password')">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                    <small class="text-muted" style="font-size: 0.7rem;">Minimum 6 caractères</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="password_confirm"><i class="fas fa-check-circle me-1"></i> CONFIRMER LE MOT DE PASSE</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-check"></i></span>
+                        <input type="password" class="form-control" id="password_confirm" name="password_confirm"
+                               placeholder="••••••••" required minlength="6">
+                        <button type="button" class="password-toggle" onclick="togglePassword('password_confirm')">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-check d-flex align-items-start gap-2">
+                    <input type="checkbox" class="form-check-input" id="accept_terms" name="accept_terms" value="1" required>
+                    <label class="form-check-label" for="accept_terms">
+                        J'accepte la <a href="#" onclick="event.preventDefault()">charte d'utilisation</a> de la console d'administration.
+                    </label>
+                </div>
+
+                <button type="submit" class="btn-primary-custom">
+                    <span class="btn-content">
+                        <i class="fas fa-user-plus"></i>
+                        Créer le compte
+                    </span>
+                </button>
+
+                <div class="security-badge">
+                    <i class="fas fa-shield-alt"></i> Réseau interne d'administration sécurisé
+                </div>
+            </form>
+
+            <div class="signup-footer">
+                Déjà un compte ? <a href="{{ path('app_login') }}">Se connecter</a>
+            </div>
+        </div>
+
+        <div class="signup-bottom">
+            © 2026. <strong>NOVAWIN</strong> — Console de Contrôle Administrative. Tous droits réservés.
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function togglePassword(inputId) {
+            const input = document.getElementById(inputId);
+            const toggle = input.nextElementSibling.querySelector('i');
+
+            if (input.type === 'password') {
+                input.type = 'text';
+                toggle.classList.remove('fa-eye');
+                toggle.classList.add('fa-eye-slash');
+            } else {
+                input.type = 'password';
+                toggle.classList.remove('fa-eye-slash');
+                toggle.classList.add('fa-eye');
+            }
+        }
+
+        document.querySelector('form')?.addEventListener('submit', function(e) {
+            const password = document.getElementById('password');
+            const passwordConfirm = document.getElementById('password_confirm');
+            const acceptTerms = document.getElementById('accept_terms');
+
+            if (password.value.length < 6) {
+                e.preventDefault();
+                alert('Le mot de passe doit contenir au moins 6 caractères.');
+                password.focus();
+                return false;
+            }
+
+            if (password.value !== passwordConfirm.value) {
+                e.preventDefault();
+                alert('Les mots de passe ne correspondent pas.');
+                passwordConfirm.focus();
+                return false;
+            }
+
+            if (!acceptTerms.checked) {
+                e.preventDefault();
+                alert('Vous devez accepter la charte d\'utilisation pour continuer.');
+                acceptTerms.focus();
+                return false;
+            }
+
+            return true;
+        });
+    </script>
+</body>
+</html>

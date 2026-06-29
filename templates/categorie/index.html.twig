@@ -1,0 +1,394 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}NOVAWIN - Gestion des Catégories{% endblock %}
+{% block page_title %}Gestion des Catégories{% endblock %}
+{% block page_subtitle %}Gérez la taxonomie et la classification de votre e-commerce.{% endblock %}
+
+{% block body %}
+<div class="container-fluid p-0">
+
+    {% for message in app.flashes('success') %}
+        <div class="alert alert-success alert-dismissible fade show" role="alert"
+             style="border-radius: 12px; border: none; background: rgba(40,167,69,0.12); color: #28a745;">
+            <i class="fas fa-check-circle me-2"></i> {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    {% endfor %}
+
+    {% for message in app.flashes('error') %}
+        <div class="alert alert-danger alert-dismissible fade show" role="alert"
+             style="border-radius: 12px; border: none; background: rgba(220,53,69,0.12); color: #dc3545;">
+            <i class="fas fa-exclamation-circle me-2"></i> {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    {% endfor %}
+
+    <!-- En-tête -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-4">
+        <div>
+            <h2 class="mb-1" style="color: var(--text-primary);">
+                <i class="fas fa-tags me-2" style="color: var(--emerald);"></i>Liste des Catégories
+                <span id="badgeCount" class="badge rounded-pill ms-2"
+                      style="background: var(--emerald); color: #0b1329; font-size: 0.75rem;">
+                    {{ categories|length }}
+                </span>
+            </h2>
+            <p class="mb-0" style="color: var(--text-secondary);">
+                <i class="fas fa-info-circle me-1"></i> Gérez vos catégories de produits
+            </p>
+        </div>
+        <div>
+            <a href="{{ path('app_categorie_new') }}" class="btn px-4 py-2 fw-semibold"
+               style="background: var(--emerald); color: #0b1329; border: none; border-radius: 12px;">
+                <i class="fas fa-plus me-2"></i> Nouvelle catégorie
+            </a>
+        </div>
+    </div>
+
+    <!-- Barre de recherche + Tri -->
+    <div class="card border-0 shadow-sm rounded-4 mb-3"
+         style="background: var(--card-bg-light); border: 1px solid var(--border-color);">
+        <div class="card-body p-3">
+            <div class="row g-3 align-items-center">
+
+                <!-- Recherche libre -->
+                <div class="col-12 col-md-5">
+                    <div class="input-group">
+                        <span class="input-group-text"
+                              style="background: var(--bg-body); border-color: var(--border-color); color: var(--text-secondary);">
+                            <i class="fas fa-search"></i>
+                        </span>
+                        <input type="text" id="searchInput" class="form-control"
+                               placeholder="Rechercher par nom ou utilisateur..."
+                               style="background: var(--bg-body); border-color: var(--border-color);
+                                      color: var(--text-primary); border-radius: 0 10px 10px 0;">
+                    </div>
+                </div>
+
+                <!-- Filtre liste déroulante par nom de catégorie -->
+                <div class="col-12 col-md-4">
+                    <div class="input-group">
+                        <span class="input-group-text"
+                              style="background: var(--bg-body); border-color: var(--border-color); color: var(--text-secondary);">
+                            <i class="fas fa-filter"></i>
+                        </span>
+                        <select id="filterSelect" class="form-select"
+                                style="background: var(--bg-body); border-color: var(--border-color);
+                                       color: var(--text-primary); border-radius: 0 10px 10px 0;">
+                            <option value="">— Toutes les catégories —</option>
+                            {% for categorie in categories %}
+                                <option value="{{ categorie.nom|lower }}">{{ categorie.nom }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Tri -->
+                <div class="col-12 col-md-3">
+                    <div class="input-group">
+                        <span class="input-group-text"
+                              style="background: var(--bg-body); border-color: var(--border-color); color: var(--text-secondary);">
+                            <i class="fas fa-sort"></i>
+                        </span>
+                        <select id="sortSelect" class="form-select"
+                                style="background: var(--bg-body); border-color: var(--border-color);
+                                       color: var(--text-primary); border-radius: 0 10px 10px 0;">
+                            <option value="nom-asc">Nom A → Z</option>
+                            <option value="nom-desc">Nom Z → A</option>
+                            <option value="user-asc">Utilisateur A → Z</option>
+                            <option value="user-desc">Utilisateur Z → A</option>
+                        </select>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Résumé + reset -->
+            <div class="d-flex align-items-center justify-content-between mt-2">
+                <small id="resultCount" style="color: var(--text-secondary);"></small>
+                <button id="resetFilters" class="btn btn-sm"
+                        style="display:none; background: transparent; color: var(--text-secondary);
+                               border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.78rem;">
+                    <i class="fas fa-times me-1"></i> Réinitialiser les filtres
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tableau -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden"
+         style="background: var(--card-bg-light); border: 1px solid var(--border-color);">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" style="color: var(--text-primary);">
+                    <thead style="background: var(--bg-body);">
+                        <tr>
+                            <th class="px-4 py-3 text-uppercase small fw-bold"
+                                style="font-size: 0.65rem; letter-spacing: 1px; color: var(--text-secondary);">
+                                <i class="fas fa-tag me-2"></i>NOM
+                            </th>
+                            <th class="px-4 py-3 text-uppercase small fw-bold"
+                                style="font-size: 0.65rem; letter-spacing: 1px; color: var(--text-secondary);">
+                                <i class="fas fa-align-left me-2"></i>DESCRIPTION
+                            </th>
+                            <th class="px-4 py-3 text-uppercase small fw-bold"
+                                style="font-size: 0.65rem; letter-spacing: 1px; color: var(--text-secondary);">
+                                <i class="fas fa-user me-2"></i>CRÉÉ PAR
+                            </th>
+                            <th class="px-4 py-3 text-uppercase small fw-bold text-end"
+                                style="font-size: 0.65rem; letter-spacing: 1px; color: var(--text-secondary);">
+                                <i class="fas fa-tools me-2"></i>ACTIONS
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="categorieTableBody">
+                        {% if categories is empty %}
+                            <tr id="emptyRow">
+                                <td colspan="4" class="text-center py-5" style="color: var(--text-secondary);">
+                                    <i class="fas fa-tags fa-3x d-block mb-3" style="opacity: 0.5;"></i>
+                                    <p class="mb-0">Aucune catégorie enregistrée pour le moment.</p>
+                                    <small>Cliquez sur "Nouvelle catégorie" pour commencer.</small>
+                                </td>
+                            </tr>
+                        {% else %}
+                            {% for categorie in categories %}
+                                <tr class="border-bottom categorie-row"
+                                    style="border-color: var(--border-color) !important;"
+                                    data-nom="{{ categorie.nom|lower }}"
+                                    data-user="{{ (categorie.utilisateur.prenom ~ ' ' ~ categorie.utilisateur.nom)|lower }}">
+
+                                    <td class="px-4 py-3" style="font-weight: 500;">
+                                        {{ categorie.nom }}
+                                    </td>
+                                    <td class="px-4 py-3" style="color: var(--text-secondary);">
+                                        {{ categorie.description|slice(0, 50) }}{% if categorie.description|length > 50 %}...{% endif %}
+                                    </td>
+                                    <td class="px-4 py-3" style="color: var(--text-secondary);">
+                                        <span class="badge rounded-pill px-3 py-2"
+                                              style="background: var(--bg-body); color: var(--text-secondary);">
+                                            <i class="fas fa-user-circle me-1"></i>
+                                            {{ categorie.utilisateur.prenom }} {{ categorie.utilisateur.nom }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 text-end">
+                                        <div class="d-flex justify-content-end gap-2">
+                                            <a href="{{ path('app_categorie_show', {'id': categorie.id}) }}"
+                                               class="btn btn-sm rounded-circle"
+                                               style="width:34px;height:34px;border:1.5px solid var(--border-color);
+                                                      color:var(--text-secondary);background:transparent;transition:all 0.3s ease;"
+                                               onmouseover="this.style.borderColor='var(--emerald)';this.style.color='var(--emerald)';"
+                                               onmouseout="this.style.borderColor='var(--border-color)';this.style.color='var(--text-secondary)';"
+                                               title="Voir la catégorie">
+                                                <i class="fas fa-eye" style="font-size:0.8rem;"></i>
+                                            </a>
+                                            <a href="{{ path('app_categorie_edit', {'id': categorie.id}) }}"
+                                               class="btn btn-sm rounded-circle"
+                                               style="width:34px;height:34px;border:1.5px solid var(--border-color);
+                                                      color:var(--text-secondary);background:transparent;transition:all 0.3s ease;"
+                                               onmouseover="this.style.borderColor='var(--emerald)';this.style.color='var(--emerald)';"
+                                               onmouseout="this.style.borderColor='var(--border-color)';this.style.color='var(--text-secondary)';"
+                                               title="Modifier la catégorie">
+                                                <i class="fas fa-pen" style="font-size:0.8rem;"></i>
+                                            </a>
+                                            <form action="{{ path('app_categorie_delete', {'id': categorie.id}) }}"
+                                                  method="POST" class="d-inline delete-form">
+                                                <input type="hidden" name="_token"
+                                                       value="{{ csrf_token('delete' ~ categorie.id) }}">
+                                                <button type="submit" class="btn btn-sm rounded-circle delete-btn"
+                                                        style="width:34px;height:34px;border:1.5px solid var(--border-color);
+                                                               color:var(--text-secondary);background:transparent;transition:all 0.3s ease;"
+                                                        onmouseover="this.style.borderColor='#dc3545';this.style.color='#dc3545';"
+                                                        onmouseout="this.style.borderColor='var(--border-color)';this.style.color='var(--text-secondary)';"
+                                                        data-categorie-name="{{ categorie.nom }}"
+                                                        title="Supprimer la catégorie">
+                                                    <i class="fas fa-trash" style="font-size:0.8rem;"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        {% endif %}
+                    </tbody>
+                </table>
+
+                <!-- Ligne "aucun résultat" après filtrage -->
+                <div id="noResultRow" class="text-center py-5" style="display:none; color: var(--text-secondary);">
+                    <i class="fas fa-search fa-3x d-block mb-3" style="opacity: 0.4;"></i>
+                    <p class="mb-0">Aucune catégorie ne correspond à votre recherche.</p>
+                    <small>Essayez un autre terme ou réinitialisez les filtres.</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    const searchInput  = document.getElementById('searchInput');
+    const filterSelect = document.getElementById('filterSelect');
+    const sortSelect   = document.getElementById('sortSelect');
+    const tbody        = document.getElementById('categorieTableBody');
+    const noResult     = document.getElementById('noResultRow');
+    const resultCount  = document.getElementById('resultCount');
+    const badgeCount   = document.getElementById('badgeCount');
+    const resetBtn     = document.getElementById('resetFilters');
+    const totalRows    = document.querySelectorAll('.categorie-row').length;
+
+    function applyFilters() {
+        const search = searchInput.value.trim().toLowerCase();
+        const filter = filterSelect.value.toLowerCase();
+        const sort   = sortSelect.value;
+
+        let rows = Array.from(document.querySelectorAll('.categorie-row'));
+
+        // 1. Filtrer
+        rows.forEach(row => {
+            const nom  = row.dataset.nom  || '';
+            const user = row.dataset.user || '';
+
+            const matchSearch = !search || nom.includes(search) || user.includes(search);
+            const matchFilter = !filter || nom === filter;
+
+            row.style.display = (matchSearch && matchFilter) ? '' : 'none';
+        });
+
+        // 2. Trier les lignes visibles
+        const visibleRows = rows.filter(r => r.style.display !== 'none');
+
+        visibleRows.sort((a, b) => {
+            const nomA  = a.dataset.nom  || '';
+            const nomB  = b.dataset.nom  || '';
+            const userA = a.dataset.user || '';
+            const userB = b.dataset.user || '';
+
+            switch (sort) {
+                case 'nom-asc':   return nomA.localeCompare(nomB, 'fr');
+                case 'nom-desc':  return nomB.localeCompare(nomA, 'fr');
+                case 'user-asc':  return userA.localeCompare(userB, 'fr');
+                case 'user-desc': return userB.localeCompare(userA, 'fr');
+                default:          return 0;
+            }
+        });
+
+        // Réinsérer dans le DOM dans le bon ordre
+        visibleRows.forEach(row => tbody.appendChild(row));
+
+        // 3. Mettre à jour les compteurs et messages
+        const count = visibleRows.length;
+        badgeCount.textContent = count;
+
+        if (count === 0) {
+            noResult.style.display = '';
+            resultCount.textContent = 'Aucun résultat';
+        } else {
+            noResult.style.display = 'none';
+            resultCount.textContent = count === totalRows
+                ? `${count} catégorie${count > 1 ? 's' : ''} au total`
+                : `${count} résultat${count > 1 ? 's' : ''} sur ${totalRows}`;
+        }
+
+        // 4. Afficher/masquer le bouton reset
+        resetBtn.style.display = (search || filter) ? 'inline-block' : 'none';
+    }
+
+    // Événements
+    searchInput.addEventListener('input', applyFilters);
+    filterSelect.addEventListener('change', applyFilters);
+    sortSelect.addEventListener('change', applyFilters);
+
+    resetBtn.addEventListener('click', function () {
+        searchInput.value  = '';
+        filterSelect.value = '';
+        sortSelect.value   = 'nom-asc';
+        applyFilters();
+    });
+
+    // Synchroniser filterSelect → searchInput (et vice-versa)
+    filterSelect.addEventListener('change', function () {
+        if (this.value) searchInput.value = '';
+    });
+    searchInput.addEventListener('input', function () {
+        if (this.value) filterSelect.value = '';
+    });
+
+    // Init
+    applyFilters();
+
+    /* ── Suppression SweetAlert ── */
+    document.querySelectorAll('.delete-btn').forEach(button => {
+        button.addEventListener('click', function (e) {
+            e.preventDefault();
+            const form = this.closest('form');
+            const name = this.dataset.categorieName;
+
+            Swal.fire({
+                title: 'Confirmer la suppression',
+                html: `<div style="text-align:left;color:var(--text-secondary);">
+                    <p>Êtes-vous sûr de vouloir supprimer la catégorie
+                       <strong style="color:var(--text-primary);">${name}</strong> ?</p>
+                    <p style="font-size:0.9rem;margin-top:0.5rem;">
+                        <i class="fas fa-exclamation-triangle" style="color:#dc3545;"></i>
+                        Cette action est <strong style="color:#dc3545;">irréversible</strong>.
+                    </p>
+                </div>`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: '<i class="fas fa-trash me-2"></i>Oui, supprimer',
+                cancelButtonText: '<i class="fas fa-times me-2"></i>Annuler',
+                background: getComputedStyle(document.documentElement).getPropertyValue('--card-bg-light').trim() || '#fff',
+                color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#1a2744',
+                customClass: {
+                    popup: 'rounded-4',
+                    confirmButton: 'btn btn-danger px-4 py-2 rounded-pill',
+                    cancelButton: 'btn btn-secondary px-4 py-2 rounded-pill'
+                }
+            }).then(result => { if (result.isConfirmed) form.submit(); });
+        });
+    });
+});
+</script>
+
+<style>
+    [data-theme="dark"] .btn-close { filter: invert(1); }
+
+    .table > :not(caption) > * > * { background-color: transparent !important; }
+    .table-hover tbody tr:hover { background: var(--bg-body) !important; }
+
+    .form-control:focus, .form-select:focus {
+        border-color: var(--emerald) !important;
+        box-shadow: 0 0 0 0.2rem rgba(0,255,163,0.15) !important;
+    }
+
+    .swal2-popup {
+        border-radius: 16px !important;
+        border: 1px solid var(--border-color) !important;
+        background: var(--card-bg-light) !important;
+    }
+    .swal2-title { color: var(--text-primary) !important; }
+    .swal2-html-container { color: var(--text-secondary) !important; }
+    .swal2-confirm, .swal2-cancel {
+        border: none !important;
+        border-radius: 50px !important;
+        font-weight: 600 !important;
+        padding: 0.6rem 1.5rem !important;
+        transition: all 0.3s ease !important;
+    }
+    .swal2-confirm:hover, .swal2-cancel:hover {
+        transform: scale(1.02) !important;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2) !important;
+    }
+    .swal2-cancel { background: #6c757d !important; }
+    .swal2-actions { gap: 0.75rem !important; }
+
+    @media (max-width: 768px) {
+        .table-responsive { font-size: 0.85rem; }
+        .px-4 { padding-left: 0.75rem !important; padding-right: 0.75rem !important; }
+        .py-3 { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; }
+    }
+</style>
+{% endblock %}

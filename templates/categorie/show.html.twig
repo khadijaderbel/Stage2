@@ -1,0 +1,48 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}NOVAWIN - Détails de la Catégorie{% endblock %}
+
+{% block page_title %}Détails de la Catégorie{% endblock %}
+{% block page_subtitle %}Consultez les informations de {{ categorie.nom }}{% endblock %}
+
+{% block body %}
+<div class="container-fluid p-0">
+    <div class="card border-0 shadow-sm rounded-4" style="background: var(--card-bg-light); border: 1px solid var(--border-color);">
+        <div class="card-body p-4">
+            <div class="row g-4">
+                <div class="col-12">
+                    <div class="mb-3">
+                        <label class="text-muted small text-uppercase fw-semibold" style="color: var(--text-secondary);">Nom</label>
+                        <p class="fs-4 fw-bold" style="color: var(--text-primary);">{{ categorie.nom }}</p>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="text-muted small text-uppercase fw-semibold" style="color: var(--text-secondary);">Description</label>
+                        <p style="color: var(--text-secondary);">{{ categorie.description ?: 'Aucune description' }}</p>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="text-muted small text-uppercase fw-semibold" style="color: var(--text-secondary);">Créé par</label>
+                        <p style="color: var(--text-primary);">
+                            <i class="fas fa-user-circle me-2" style="color: var(--emerald);"></i>
+                            {{ categorie.utilisateur.prenom }} {{ categorie.utilisateur.nom }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4 d-flex gap-3">
+                <a href="{{ path('app_categorie_edit', {'id': categorie.id}) }}" class="btn px-4 py-2 fw-semibold"
+                   style="background: var(--emerald); color: #0b1329; border: none; border-radius: 12px; transition: all 0.3s ease;">
+                    <i class="fas fa-edit me-2"></i> Modifier
+                </a>
+
+                <a href="{{ path('app_categorie_index') }}" class="btn px-4 py-2 fw-semibold"
+                   style="background: transparent; color: var(--text-secondary); border: 1.5px solid var(--border-color); border-radius: 12px; transition: all 0.3s ease;">
+                    <i class="fas fa-arrow-left me-2"></i> Retour
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

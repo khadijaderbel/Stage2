@@ -1,0 +1,170 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}NOVAWIN - Modifier l'utilisateur{% endblock %}
+
+{% block page_title %}Modifier l'utilisateur{% endblock %}
+{% block page_subtitle %}Modifiez les informations de {{ user.prenom }} {{ user.nom }}{% endblock %}
+
+{% block body %}
+<div class="container-fluid p-0">
+    <!-- Messages Flash -->
+    {% for message in app.flashes('success') %}
+        <div class="alert alert-success alert-dismissible fade show" role="alert" style="border-radius: 12px; border: none; background: rgba(40, 167, 69, 0.12); color: #28a745;">
+            <i class="fas fa-check-circle me-2"></i> {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" style="filter: var(--btn-close-filter);"></button>
+        </div>
+    {% endfor %}
+
+    {% for message in app.flashes('error') %}
+        <div class="alert alert-danger alert-dismissible fade show" role="alert" style="border-radius: 12px; border: none; background: rgba(220, 53, 69, 0.12); color: #dc3545;">
+            <i class="fas fa-exclamation-circle me-2"></i> {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" style="filter: var(--btn-close-filter);"></button>
+        </div>
+    {% endfor %}
+
+    <!-- Formulaire -->
+    <div class="card border-0 shadow-sm rounded-4" style="background: var(--card-bg-light); border: 1px solid var(--border-color);">
+        <div class="card-body p-4">
+            {{ form_start(form, {'attr': {'class': 'needs-validation', 'novalidate': 'novalidate'}}) }}
+
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        {{ form_row(form.prenom, {
+                            'attr': {
+                                'class': 'form-control' ~ (form.prenom.vars.errors|length ? ' is-invalid' : ''),
+                                'style': 'background: var(--bg-body); border-color: var(--border-color); color: var(--text-primary); border-radius: 10px; padding: 0.6rem 1rem;'
+                            },
+                            'label_attr': {
+                                'class': 'form-label small fw-semibold',
+                                'style': 'color: var(--text-secondary);'
+                            },
+                            'help_attr': {
+                                'style': 'color: var(--text-secondary);'
+                            }
+                        }) }}
+                    </div>
+
+                    <div class="col-md-6">
+                        {{ form_row(form.nom, {
+                            'attr': {
+                                'class': 'form-control' ~ (form.nom.vars.errors|length ? ' is-invalid' : ''),
+                                'style': 'background: var(--bg-body); border-color: var(--border-color); color: var(--text-primary); border-radius: 10px; padding: 0.6rem 1rem;'
+                            },
+                            'label_attr': {
+                                'class': 'form-label small fw-semibold',
+                                'style': 'color: var(--text-secondary);'
+                            },
+                            'help_attr': {
+                                'style': 'color: var(--text-secondary);'
+                            }
+                        }) }}
+                    </div>
+
+                    <div class="col-12">
+                        {{ form_row(form.email, {
+                            'attr': {
+                                'class': 'form-control' ~ (form.email.vars.errors|length ? ' is-invalid' : ''),
+                                'style': 'background: var(--bg-body); border-color: var(--border-color); color: var(--text-primary); border-radius: 10px; padding: 0.6rem 1rem;'
+                            },
+                            'label_attr': {
+                                'class': 'form-label small fw-semibold',
+                                'style': 'color: var(--text-secondary);'
+                            },
+                            'help_attr': {
+                                'style': 'color: var(--text-secondary);'
+                            }
+                        }) }}
+                    </div>
+
+                    <div class="col-12">
+                        {{ form_row(form.password, {
+                            'attr': {
+                                'class': 'form-control' ~ (form.password.vars.errors|length ? ' is-invalid' : ''),
+                                'style': 'background: var(--bg-body); border-color: var(--border-color); color: var(--text-primary); border-radius: 10px; padding: 0.6rem 1rem;',
+                                'placeholder': 'Laisser vide pour conserver le mot de passe actuel'
+                            },
+                            'label_attr': {
+                                'class': 'form-label small fw-semibold',
+                                'style': 'color: var(--text-secondary);'
+                            },
+                            'help_attr': {
+                                'style': 'color: var(--text-secondary);'
+                            }
+                        }) }}
+                        <small style="color: var(--text-secondary);">Minimum 6 caractères si vous souhaitez changer le mot de passe.</small>
+                    </div>
+
+                    <div class="col-md-6">
+                        {{ form_row(form.role, {
+                            'attr': {
+                                'class': 'form-control' ~ (form.role.vars.errors|length ? ' is-invalid' : ''),
+                                'style': 'background: var(--bg-body); border-color: var(--border-color); color: var(--text-primary); border-radius: 10px; padding: 0.6rem 1rem;'
+                            },
+                            'label_attr': {
+                                'class': 'form-label small fw-semibold',
+                                'style': 'color: var(--text-secondary);'
+                            },
+                            'help_attr': {
+                                'style': 'color: var(--text-secondary);'
+                            }
+                        }) }}
+                    </div>
+
+                    <div class="col-md-6">
+                        {{ form_row(form.actif, {
+                            'attr': {
+                                'class': 'form-control' ~ (form.actif.vars.errors|length ? ' is-invalid' : ''),
+                                'style': 'background: var(--bg-body); border-color: var(--border-color); color: var(--text-primary); border-radius: 10px; padding: 0.6rem 1rem;'
+                            },
+                            'label_attr': {
+                                'class': 'form-label small fw-semibold',
+                                'style': 'color: var(--text-secondary);'
+                            },
+                            'help_attr': {
+                                'style': 'color: var(--text-secondary);'
+                            }
+                        }) }}
+                    </div>
+                </div>
+
+                <div class="mt-4 d-flex gap-3">
+                    <button type="submit" class="btn px-4 py-2 fw-semibold"
+                            style="background: var(--emerald); color: #0b1329; border: none; border-radius: 12px; transition: all 0.3s ease;">
+                        <i class="fas fa-save me-2"></i> Enregistrer les modifications
+                    </button>
+
+                    <a href="{{ path('app_user') }}" class="btn px-4 py-2 fw-semibold"
+                       style="background: transparent; color: var(--text-secondary); border: 1.5px solid var(--border-color); border-radius: 12px; transition: all 0.3s ease;">
+                        <i class="fas fa-times me-2"></i> Annuler
+                    </a>
+                </div>
+
+            {{ form_end(form) }}
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-control.is-invalid {
+        border-color: #dc3545 !important;
+    }
+
+    .form-control.is-invalid:focus {
+        box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
+    }
+
+    .invalid-feedback {
+        display: block;
+        color: #dc3545;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+    }
+
+    .form-control:focus {
+        border-color: var(--emerald);
+        box-shadow: 0 0 0 0.2rem rgba(0, 255, 163, 0.15);
+    }
+
+    [data-theme="dark"] .btn-close { filter: invert(1); }
+</style>
+{% endblock %}
