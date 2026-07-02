@@ -1,0 +1,805 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}NOVAWIN - Nouvel Import{% endblock %}
+
+{% block page_title %}
+    <i class="fas fa-upload me-2" style="color:var(--emerald);"></i>Nouvel Import
+{% endblock %}
+
+{% block page_subtitle %}Importez une liste de produits depuis un fichier CSV, Excel ou JSON{% endblock %}
+
+{% block body %}
+<div class="container-fluid p-0">
+
+    {% for message in app.flashes('success') %}
+        <div class="alert alert-success"
+             style="border-radius:12px;border:none;background:rgba(40,167,69,0.12);color:#28a745;">
+            <i class="fas fa-check-circle me-2"></i>{{ message }}
+        </div>
+    {% endfor %}
+    {% for message in app.flashes('error') %}
+        <div class="alert alert-danger"
+             style="border-radius:12px;border:none;background:rgba(220,53,69,0.12);color:#dc3545;">
+            <i class="fas fa-exclamation-circle me-2"></i>{{ message }}
+        </div>
+    {% endfor %}
+
+    <div class="row g-4">
+        <div class="col-lg-8 mx-auto">
+            <div class="card border-0 shadow-sm rounded-4"
+                 style="background:var(--card-bg-light);border:1px solid var(--border-color);">
+                <div class="card-body p-4">
+
+                    <div class="text-center mb-4">
+                        <div style="width:80px;height:80px;border-radius:20px;
+                                    background:rgba(0,255,163,0.1);display:inline-flex;
+                                    align-items:center;justify-content:center;margin-bottom:16px;">
+                            <i class="fas fa-file-import fa-3x" style="color:var(--emerald);"></i>
+                        </div>
+                        <h4 style="color:var(--text-primary);">Importation de produits</h4>
+                        <p style="color:var(--text-secondary);font-size:0.9rem;">
+                            Téléchargez un fichier contenant vos produits pour les importer en masse.
+                            Les formats acceptés sont : CSV, Excel (XLSX, XLS) et JSON.
+                        </p>
+                    </div>
+
+                    <!-- ══════════════════════════════════════
+                         RÈGLES DU FICHIER D'IMPORT
+                    ══════════════════════════════════════ -->
+                    <div class="import-rules-box mb-4">
+                        <button type="button" class="import-rules-toggle" id="importRulesToggle"
+                                onclick="toggleImportRules()">
+                            <span>
+                                <i class="fas fa-list-check me-2" style="color:#64b4ff;"></i>
+                                📋 Voir le format de fichier attendu (colonnes)
+                            </span>
+                            <i class="fas fa-chevron-down" id="importRulesChevron"></i>
+                        </button>
+
+                        <div class="import-rules-content" id="importRulesContent">
+                            <p class="small mb-2" style="color:var(--text-secondary);">
+                                Le fichier doit contenir les colonnes suivantes (l'ordre n'a pas d'importance,
+                                les accents et la casse des en-têtes sont tolérés) :
+                            </p>
+                            <div class="table-responsive">
+                                <table class="table table-sm import-rules-table mb-2">
+                                    <thead>
+                                        <tr>
+                                            <th>Colonne</th>
+                                            <th>Obligatoire</th>
+                                            <th>Description</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><code>sku</code></td>
+                                            <td><span class="badge-req">Oui</span></td>
+                                            <td>Référence unique du produit. Sert à détecter les doublons.</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>nom</code></td>
+                                            <td><span class="badge-req">Oui</span></td>
+                                            <td>Nom du produit.</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>categorie</code></td>
+                                            <td><span class="badge-req">Oui</span></td>
+                                            <td>Nom de la catégorie. Si elle n'existe pas encore, une proposition de création vous sera faite.</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>statut</code></td>
+                                            <td><span class="badge-req">Oui</span></td>
+                                            <td>Valeurs acceptées : <code>actif</code>, <code>inactif</code>, <code>rupture</code>. Défaut : <code>inactif</code>.</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>caracteristiques</code></td>
+                                            <td><span class="badge-req">Oui</span></td>
+                                            <td>Une caractéristique par ligne (Alt+Entrée en Excel) ou tableau JSON. <strong>La virgule n'est jamais un séparateur.</strong></td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>description_originale</code></td>
+                                            <td><span class="badge-opt">Non</span></td>
+                                            <td>Description fournie telle quelle.</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>image_url</code></td>
+                                            <td><span class="badge-opt">Non</span></td>
+                                            <td>URL publique de l'image. Ignorée si invalide ou inaccessible.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <ul class="import-rules-notes small mb-0">
+                                <li>Si un <strong>SKU existe déjà</strong> avec le même statut, la ligne est ignorée.</li>
+                                <li>Si le SKU existe avec un <strong>statut différent</strong>, le produit est mis à jour.</li>
+                                <li>Une ligne sans <code>sku</code> ou sans <code>nom</code> est ignorée et comptée en erreur.</li>
+                                <li>Format JSON attendu : <code>{"produits":[{...}, {...}]}</code> ou <code>[{...}, {...}]</code>.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- ══════════════════════════════════════
+                         FORMULAIRE D'IMPORT
+                    ══════════════════════════════════════ -->
+                    <form id="importForm"
+                          action="{{ path('app_import_upload') }}"
+                          method="POST"
+                          enctype="multipart/form-data">
+
+                        <div id="importDropZone" class="text-center py-5 rounded-3"
+                             style="border:2px dashed var(--border-color);cursor:pointer;transition:all 0.3s;"
+                             onclick="document.getElementById('importFile').click()"
+                             ondragover="event.preventDefault();this.style.borderColor='var(--emerald)';"
+                             ondragleave="this.style.borderColor='var(--border-color)';"
+                             ondrop="handleDrop(event)">
+                            <i class="fas fa-cloud-upload-alt fa-3x mb-3" style="color:var(--text-secondary);"></i>
+                            <p class="mb-1 fw-semibold" style="color:var(--text-primary);font-size:1.1rem;">
+                                Glissez votre fichier ici
+                            </p>
+                            <p class="mb-0 small" style="color:var(--text-secondary);">
+                                ou cliquez pour parcourir
+                            </p>
+                            <input type="file"
+                                   id="importFile"
+                                   name="importFile"
+                                   accept=".csv,.xlsx,.xls,.json"
+                                   class="d-none"
+                                   onchange="handleFileSelect(this)">
+                        </div>
+
+                        <div id="importFileName" class="mt-3 text-center"
+                             style="display:none;">
+                            <div class="d-inline-flex align-items-center gap-3 px-4 py-2 rounded-3"
+                                 style="background:rgba(0,255,163,0.08);border:1px solid rgba(0,255,163,0.2);">
+                                <i class="fas fa-file-check" style="color:var(--emerald);font-size:1.2rem;"></i>
+                                <span id="fileNameDisplay" style="color:var(--text-primary);font-weight:500;"></span>
+                                <span id="fileSizeDisplay" style="color:var(--text-secondary);font-size:0.85rem;"></span>
+                                <button type="button" class="btn btn-sm" onclick="clearFile()"
+                                        style="background:transparent;color:var(--text-secondary);border:1px solid var(--border-color);border-radius:8px;">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2 justify-content-center mt-4 flex-wrap">
+                            <span class="badge rounded-pill px-3 py-2"
+                                  style="background:rgba(0,255,163,0.1);color:var(--emerald);font-size:0.75rem;">
+                                <i class="fas fa-file-csv me-1"></i> CSV
+                            </span>
+                            <span class="badge rounded-pill px-3 py-2"
+                                  style="background:rgba(29,111,66,0.1);color:#1d6f42;font-size:0.75rem;">
+                                <i class="fas fa-file-excel me-1"></i> Excel (.xlsx, .xls)
+                            </span>
+                            <span class="badge rounded-pill px-3 py-2"
+                                  style="background:rgba(240,165,0,0.1);color:#f0a500;font-size:0.75rem;">
+                                <i class="fas fa-file-code me-1"></i> JSON
+                            </span>
+                        </div>
+
+                        <div class="text-center mt-4">
+                            <button type="submit"
+                                    class="btn px-5 py-2 fw-semibold"
+                                    id="importSubmitBtn"
+                                    disabled
+                                    style="background:var(--emerald);color:#0b1329;border:none;border-radius:12px;
+                                           opacity:0.5;transition:all 0.3s;font-size:1rem;">
+                                <i class="fas fa-upload me-2"></i> Importer
+                            </button>
+                            <a href="{{ path('app_produit_index') }}"
+                               class="btn px-4 py-2 ms-2"
+                               style="background:transparent;border:1.5px solid var(--border-color);
+                                      color:var(--text-secondary);border-radius:12px;">
+                                <i class="fas fa-arrow-left me-1"></i> Retour
+                            </a>
+                        </div>
+                    </form>
+
+                </div>
+            </div>
+
+            <!-- ══════════════════════════════════════
+                 HISTORIQUE RÉCENT (3 derniers imports)
+            ══════════════════════════════════════ -->
+            <div class="card border-0 shadow-sm rounded-4 mt-4"
+                 style="background:var(--card-bg-light);border:1px solid var(--border-color);">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="fw-bold mb-0" style="color:var(--text-primary);">
+                            <i class="fas fa-clock-rotate-left me-2" style="color:var(--emerald);"></i>
+                            Derniers imports
+                        </h6>
+                        <a href="{{ path('app_historique_importation_index') }}"
+                           style="color:var(--text-secondary);font-size:0.85rem;text-decoration:none;">
+                            Voir tout <i class="fas fa-arrow-right ms-1"></i>
+                        </a>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-sm" style="color:var(--text-secondary);font-size:0.85rem;">
+                            <thead>
+                                <tr>
+                                    <th style="color:var(--text-secondary);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.5px;">Fichier</th>
+                                    <th style="color:var(--text-secondary);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.5px;">Date</th>
+                                    <th style="color:var(--text-secondary);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.5px;">Statut</th>
+                                    <th style="color:var(--text-secondary);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.5px;">Résultat</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if historiques is defined and historiques is not empty %}
+                                    {% for h in historiques %}
+                                        <tr>
+                                            <td style="font-weight:500;color:var(--text-primary);">
+                                                <i class="fas fa-file me-2" style="color:var(--text-secondary);"></i>
+                                                {{ h.nomFichier }}
+                                            </td>
+                                            <td>{{ h.dateImportation|date('d/m/Y H:i') }}</td>
+                                            <td>
+                                                {% if h.statut == 'succes' %}
+                                                    <span class="badge rounded-pill px-2 py-1" style="background:rgba(40,167,69,0.15);color:#28a745;">
+                                                        <i class="fas fa-check-circle me-1"></i> Succès
+                                                    </span>
+                                                {% elseif h.statut == 'partiel' %}
+                                                    <span class="badge rounded-pill px-2 py-1" style="background:rgba(255,193,7,0.15);color:#ffc107;">
+                                                        <i class="fas fa-exclamation-triangle me-1"></i> Partiel
+                                                    </span>
+                                                {% elseif h.statut == 'echec' %}
+                                                    <span class="badge rounded-pill px-2 py-1" style="background:rgba(220,53,69,0.15);color:#dc3545;">
+                                                        <i class="fas fa-times-circle me-1"></i> Échec
+                                                    </span>
+                                                {% elseif h.statut == 'en_cours' %}
+                                                    <span class="badge rounded-pill px-2 py-1" style="background:rgba(108,117,125,0.15);color:#6c757d;">
+                                                        <i class="fas fa-spinner fa-spin me-1"></i> En cours
+                                                    </span>
+                                                {% else %}
+                                                    <span class="badge rounded-pill px-2 py-1" style="background:rgba(108,117,125,0.15);color:#6c757d;">
+                                                        <i class="fas fa-clock me-1"></i> {{ h.statut }}
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                            <td style="font-size:0.8rem;">
+                                                {% if h.nombreImportes > 0 %}
+                                                    <span style="color:#28a745;">{{ h.nombreImportes }} importé(s)</span>
+                                                {% endif %}
+                                                {% if h.nombreErreurs > 0 %}
+                                                    <span style="color:#dc3545;">{{ h.nombreErreurs }} erreur(s)</span>
+                                                {% endif %}
+                                                {% if h.nombreImportes == 0 and h.nombreErreurs == 0 %}
+                                                    <span style="color:var(--text-secondary);">Aucune donnée</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="4" class="text-center py-3" style="color:var(--text-secondary);">
+                                            <i class="fas fa-info-circle me-1"></i> Aucun historique d'import trouvé.
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<style>
+    /* ════════════════════════════════════
+       RÈGLES D'IMPORT
+    ════════════════════════════════════ */
+    .import-rules-box {
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        overflow: hidden;
+        background: var(--bg-body);
+    }
+    .import-rules-toggle {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 14px;
+        background: transparent;
+        border: none;
+        color: var(--text-primary);
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    .import-rules-toggle i.fa-chevron-down { transition: transform 0.25s ease; color: var(--text-secondary); }
+    .import-rules-toggle.open i.fa-chevron-down { transform: rotate(180deg); }
+    .import-rules-content {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease, padding 0.3s ease;
+        padding: 0 14px;
+    }
+    .import-rules-content.open {
+        max-height: 600px;
+        padding: 0 14px 14px 14px;
+        overflow-y: auto;
+    }
+    .import-rules-table { font-size: 0.78rem; color: var(--text-secondary); }
+    .import-rules-table thead th {
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        font-size: 0.65rem;
+        letter-spacing: 0.5px;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .import-rules-table td { border-bottom: 1px solid var(--border-color); vertical-align: top; }
+    .import-rules-table code {
+        background: rgba(100,180,255,0.12);
+        color: #64b4ff;
+        padding: 1px 6px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+    }
+    .badge-req {
+        background: rgba(220,53,69,0.15); color: #dc3545;
+        padding: 2px 8px; border-radius: 20px; font-size: 0.7rem; font-weight: 600;
+    }
+    .badge-opt {
+        background: rgba(108,117,125,0.15); color: #6c757d;
+        padding: 2px 8px; border-radius: 20px; font-size: 0.7rem; font-weight: 600;
+    }
+    .import-rules-notes { color: var(--text-secondary); padding-left: 18px; }
+    .import-rules-notes li { margin-bottom: 4px; }
+
+    #importDropZone:hover { border-color: var(--emerald) !important; background: rgba(0,255,163,0.04); }
+
+    /* ════════════════════════════════════
+       STATUTS DES IMPORTS
+    ════════════════════════════════════ */
+    .badge-pill {
+        font-weight: 500;
+        font-size: 0.7rem;
+        padding: 0.3rem 0.8rem;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+
+    /* ══════════════════════════════
+       TOGGLE RÈGLES D'IMPORT
+    ══════════════════════════════ */
+    window.toggleImportRules = function() {
+        const content = document.getElementById('importRulesContent');
+        const toggle = document.getElementById('importRulesToggle');
+        content.classList.toggle('open');
+        toggle.classList.toggle('open');
+    };
+
+    /* ══════════════════════════════
+       GESTION DU FICHIER
+    ══════════════════════════════ */
+    window.handleFileSelect = function(input) {
+        if (input.files && input.files[0]) {
+            showImportFile(input.files[0]);
+        }
+    };
+
+    window.handleDrop = function(event) {
+        event.preventDefault();
+        const file = event.dataTransfer.files[0];
+        if (file) {
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            document.getElementById('importFile').files = dataTransfer.files;
+            showImportFile(file);
+        }
+        event.currentTarget.style.borderColor = 'var(--border-color)';
+    };
+
+    window.clearFile = function() {
+        document.getElementById('importFile').value = '';
+        document.getElementById('importFileName').style.display = 'none';
+        document.getElementById('fileNameDisplay').textContent = '';
+        document.getElementById('fileSizeDisplay').textContent = '';
+        const btn = document.getElementById('importSubmitBtn');
+        btn.disabled = true;
+        btn.style.opacity = '0.5';
+    };
+
+    function showImportFile(file) {
+        const allowed = ['csv', 'xlsx', 'xls', 'json'];
+        const ext = file.name.split('.').pop().toLowerCase();
+
+        if (!allowed.includes(ext)) {
+            Swal.fire({
+                title: 'Format non supporté',
+                text: `Le fichier « ${file.name} » n'est pas accepté. Utilisez CSV, Excel (.xlsx/.xls) ou JSON.`,
+                icon: 'error',
+                confirmButtonColor: '#dc3545',
+                background: getComputedStyle(document.documentElement).getPropertyValue('--card-bg-light').trim() || '#fff',
+                color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#1a2744',
+            });
+            document.getElementById('importFile').value = '';
+            return;
+        }
+
+        const nameDiv = document.getElementById('importFileName');
+        const fileNameDisplay = document.getElementById('fileNameDisplay');
+        const fileSizeDisplay = document.getElementById('fileSizeDisplay');
+        const submitBtn = document.getElementById('importSubmitBtn');
+
+        nameDiv.style.display = 'block';
+        fileNameDisplay.textContent = file.name;
+        const sizeInKB = (file.size / 1024).toFixed(1);
+        fileSizeDisplay.textContent = `(${sizeInKB} Ko)`;
+
+        submitBtn.disabled = false;
+        submitBtn.style.opacity = '1';
+    }
+
+    /* ══════════════════════════════
+       SOUMISSION DU FORMULAIRE
+    ══════════════════════════════ */
+    document.getElementById('importForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const formData = new FormData(this);
+        const submitBtn = document.getElementById('importSubmitBtn');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Importation en cours...';
+
+        fetch(this.action, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Gérer les catégories manquantes
+            if (data.type === 'categories_manquantes') {
+                const categoriesList = data.categories.map(c =>
+                    `<li style="margin:4px 0;color:var(--text-secondary);">📁 ${c}</li>`
+                ).join('');
+
+                Swal.fire({
+                    title: '🏷️ Catégories manquantes',
+                    html: `
+                        <div style="text-align:left;padding:4px 0;">
+                            <p style="color:var(--text-secondary);margin-bottom:12px;">
+                                Les catégories suivantes n'existent pas dans le système :
+                            </p>
+                            <ul style="list-style:none;padding:0;margin:8px 0 16px 0;">
+                                ${categoriesList}
+                            </ul>
+                            <p style="color:var(--text-secondary);font-size:0.9rem;">
+                                <i class="fas fa-info-circle" style="color:#64b4ff;"></i>
+                                Souhaitez-vous les créer avant d'importer le fichier ?
+                            </p>
+                            <p style="color:var(--text-secondary);font-size:0.85rem;margin-top:8px;">
+                                <strong>Fichier :</strong> ${data.nomFichier}
+                            </p>
+                        </div>
+                    `,
+                    icon: 'question',
+                    showCancelButton: true,
+                    showDenyButton: true,
+                    confirmButtonText: '<i class="fas fa-plus me-1"></i> Créer les catégories',
+                    denyButtonText: '<i class="fas fa-forward me-1"></i> Ignorer et importer',
+                    cancelButtonText: '<i class="fas fa-times me-1"></i> Annuler',
+                    confirmButtonColor: '#00ffa3',
+                    denyButtonColor: '#6c757d',
+                    cancelButtonColor: '#dc3545',
+                    background: getComputedStyle(document.documentElement).getPropertyValue('--card-bg-light').trim() || '#fff',
+                    color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#1a2744',
+                    customClass: {
+                        popup: 'rounded-4',
+                        confirmButton: 'btn fw-semibold px-4 py-2 rounded-pill',
+                        denyButton: 'btn btn-secondary px-4 py-2 rounded-pill',
+                        cancelButton: 'btn btn-danger px-4 py-2 rounded-pill'
+                    }
+                }).then(result => {
+                    if (result.isConfirmed) {
+                        // Créer les catégories
+                        const categories = data.categories;
+
+                        Swal.fire({
+                            title: 'Création en cours...',
+                            html: 'Veuillez patienter...',
+                            allowOutsideClick: false,
+                            didOpen: () => { Swal.showLoading(); }
+                        });
+
+                        Promise.all(categories.map(cat =>
+                            fetch('{{ path("app_import_create_category") }}', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ nom: cat })
+                            })
+                            .then(res => res.json())
+                            .then(res => ({ success: res.success, nom: cat, message: res.message }))
+                            .catch(() => ({ success: false, nom: cat, message: 'Erreur réseau' }))
+                        )).then(results => {
+                            const created = results.filter(r => r.success).length;
+                            const failed = results.filter(r => !r.success).length;
+
+                            if (failed === 0) {
+                                Swal.fire({
+                                    title: '✅ Catégories créées',
+                                    html: `${created} catégorie(s) créée(s) avec succès.<br><br>Lancement de l'importation...`,
+                                    icon: 'success',
+                                    timer: 1500,
+                                    showConfirmButton: false
+                                }).then(() => {
+                                    formData.append('skipCategories', '1');
+                                    reimportFile(formData);
+                                });
+                            } else {
+                                let message = `${created} catégorie(s) créée(s)`;
+                                if (failed > 0) {
+                                    message += `, ${failed} échec(s)`;
+                                    const errors = results.filter(r => !r.success).map(r =>
+                                        `<li style="color:#dc3545;">❌ ${r.nom} : ${r.message}</li>`
+                                    ).join('');
+                                    message += `<br><br><ul style="list-style:none;padding:0;">${errors}</ul>`;
+                                }
+
+                                Swal.fire({
+                                    title: '⚠️ Création partielle',
+                                    html: message + '<br><br>Souhaitez-vous quand même lancer l\'import ?',
+                                    icon: 'warning',
+                                    showCancelButton: true,
+                                    confirmButtonText: 'Oui, importer',
+                                    cancelButtonText: 'Annuler',
+                                    confirmButtonColor: '#00ffa3',
+                                    cancelButtonColor: '#dc3545'
+                                }).then(result => {
+                                    if (result.isConfirmed) {
+                                        formData.append('skipCategories', '1');
+                                        reimportFile(formData);
+                                    } else {
+                                        submitBtn.disabled = false;
+                                        submitBtn.innerHTML = '<i class="fas fa-upload me-2"></i> Importer';
+                                        submitBtn.style.opacity = '1';
+                                    }
+                                });
+                            }
+                        });
+
+                    } else if (result.isDenied) {
+                        formData.append('skipCategories', '1');
+                        reimportFile(formData);
+                    } else {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = '<i class="fas fa-upload me-2"></i> Importer';
+                        submitBtn.style.opacity = '1';
+                    }
+                });
+                return;
+            }
+
+            // Gérer les erreurs
+            if (data.type === 'error') {
+                Swal.fire({
+                    title: '❌ Erreur',
+                    text: data.message || 'Une erreur est survenue lors de l\'importation.',
+                    icon: 'error',
+                    confirmButtonColor: '#dc3545',
+                    background: getComputedStyle(document.documentElement).getPropertyValue('--card-bg-light').trim() || '#fff',
+                    color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#1a2744'
+                }).then(() => {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="fas fa-upload me-2"></i> Importer';
+                    submitBtn.style.opacity = '1';
+                });
+                return;
+            }
+
+            // Résultat de l'import
+            const isSuccess = data.action === 'succes' || data.action === 'deja_existe';
+            const isPartial = data.action === 'partiel';
+            const isEchec = data.action === 'echec';
+
+            let icon = 'success';
+            let confirmColor = '#00ffa3';
+            let title = '✅ Importation terminée';
+
+            if (isPartial) {
+                icon = 'warning';
+                confirmColor = '#f0a500';
+                title = '⚠️ Importation partielle';
+            } else if (isEchec) {
+                icon = 'error';
+                confirmColor = '#dc3545';
+                title = '❌ Échec de l\'importation';
+            } else if (data.action === 'deja_existe') {
+                icon = 'info';
+                confirmColor = '#64b4ff';
+                title = 'ℹ️ Aucune modification';
+            }
+
+            let detailsHtml = '';
+            if (data.compteurs) {
+                const c = data.compteurs;
+                const items = [];
+                if (c.crees > 0) items.push(`<span style="color:#28a745;">${c.crees} créé(s)</span>`);
+                if (c.mis_a_jour > 0) items.push(`<span style="color:#00cc82;">${c.mis_a_jour} mis à jour</span>`);
+                if (c.deja_existe > 0) items.push(`<span style="color:#6c757d;">${c.deja_existe} déjà existant(s)</span>`);
+                if (c.erreurs > 0) items.push(`<span style="color:#dc3545;">${c.erreurs} erreur(s)</span>`);
+                if (c.ignores > 0) items.push(`<span style="color:#f0a500;">${c.ignores} ignoré(s)</span>`);
+
+                if (items.length > 0) {
+                    detailsHtml = `<div style="margin:12px 0;font-size:0.95rem;">${items.join(' · ')}</div>`;
+                }
+            }
+
+            let warningsHtml = '';
+            if (data.avertissements && data.avertissements.length > 0) {
+                const warnings = data.avertissements.slice(0, 5).map(w =>
+                    `<li style="color:#ffc107;font-size:0.85rem;">⚠️ Ligne ${w.ligne} (SKU: ${w.sku}) : ${w.avertissement}</li>`
+                ).join('');
+                const more = data.avertissements.length > 5 ? `<li style="color:var(--text-secondary);font-size:0.85rem;">... et ${data.avertissements.length - 5} autre(s)</li>` : '';
+                warningsHtml = `
+                    <div style="margin-top:8px;">
+                        <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:4px;">
+                            <i class="fas fa-info-circle" style="color:#ffc107;"></i> Avertissements :
+                        </p>
+                        <ul style="list-style:none;padding:0;margin:0;">${warnings}${more}</ul>
+                    </div>
+                `;
+            }
+
+            Swal.fire({
+                title: title,
+                html: `
+                    <div style="text-align:left;">
+                        <p style="color:var(--text-secondary);margin-bottom:8px;">${data.message}</p>
+                        ${detailsHtml}
+                        ${warningsHtml}
+                        <p style="color:var(--text-secondary);font-size:0.85rem;margin-top:8px;">
+                            <i class="fas fa-info-circle" style="color:#64b4ff;"></i>
+                            L'historique a été enregistré.
+                        </p>
+                    </div>
+                `,
+                icon: icon,
+                confirmButtonColor: confirmColor,
+                confirmButtonText: '<i class="fas fa-check me-1"></i> OK',
+                background: getComputedStyle(document.documentElement).getPropertyValue('--card-bg-light').trim() || '#fff',
+                color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#1a2744',
+                customClass: {
+                    popup: 'rounded-4',
+                    confirmButton: 'btn fw-semibold px-4 py-2 rounded-pill'
+                }
+            }).then(() => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-upload me-2"></i> Importer';
+                submitBtn.style.opacity = '1';
+                if (isSuccess) {
+                    window.location.reload();
+                }
+            });
+
+        })
+        .catch(error => {
+            Swal.fire({
+                title: '❌ Erreur réseau',
+                text: 'Impossible de communiquer avec le serveur.',
+                icon: 'error',
+                confirmButtonColor: '#dc3545',
+                background: getComputedStyle(document.documentElement).getPropertyValue('--card-bg-light').trim() || '#fff',
+                color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#1a2744'
+            });
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-upload me-2"></i> Importer';
+            submitBtn.style.opacity = '1';
+        });
+    });
+
+    // Fonction pour relancer l'import après création des catégories
+    function reimportFile(formData) {
+        const submitBtn = document.getElementById('importSubmitBtn');
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Importation en cours...';
+
+        fetch('{{ path("app_import_upload") }}', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.type === 'categories_manquantes') {
+                formData.append('skipCategories', '1');
+                return reimportFile(formData);
+            }
+
+            if (data.type === 'error') {
+                Swal.fire({
+                    title: '❌ Erreur',
+                    text: data.message || 'Une erreur est survenue.',
+                    icon: 'error',
+                    confirmButtonColor: '#dc3545'
+                });
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-upload me-2"></i> Importer';
+                submitBtn.style.opacity = '1';
+                return;
+            }
+
+            const isSuccess = data.action === 'succes' || data.action === 'deja_existe';
+            const isPartial = data.action === 'partiel';
+            const isEchec = data.action === 'echec';
+
+            let icon = 'success';
+            let confirmColor = '#00ffa3';
+            let title = '✅ Importation terminée';
+
+            if (isPartial) {
+                icon = 'warning';
+                confirmColor = '#f0a500';
+                title = '⚠️ Importation partielle';
+            } else if (isEchec) {
+                icon = 'error';
+                confirmColor = '#dc3545';
+                title = '❌ Échec de l\'importation';
+            } else if (data.action === 'deja_existe') {
+                icon = 'info';
+                confirmColor = '#64b4ff';
+                title = 'ℹ️ Aucune modification';
+            }
+
+            let detailsHtml = '';
+            if (data.compteurs) {
+                const c = data.compteurs;
+                const items = [];
+                if (c.crees > 0) items.push(`<span style="color:#28a745;">${c.crees} créé(s)</span>`);
+                if (c.mis_a_jour > 0) items.push(`<span style="color:#00cc82;">${c.mis_a_jour} mis à jour</span>`);
+                if (c.deja_existe > 0) items.push(`<span style="color:#6c757d;">${c.deja_existe} déjà existant(s)</span>`);
+                if (c.erreurs > 0) items.push(`<span style="color:#dc3545;">${c.erreurs} erreur(s)</span>`);
+                if (c.ignores > 0) items.push(`<span style="color:#f0a500;">${c.ignores} ignoré(s)</span>`);
+
+                if (items.length > 0) {
+                    detailsHtml = `<div style="margin:12px 0;font-size:0.95rem;">${items.join(' · ')}</div>`;
+                }
+            }
+
+            Swal.fire({
+                title: title,
+                html: `
+                    <div style="text-align:left;">
+                        <p style="color:var(--text-secondary);margin-bottom:8px;">${data.message}</p>
+                        ${detailsHtml}
+                        <p style="color:var(--text-secondary);font-size:0.85rem;margin-top:8px;">
+                            <i class="fas fa-info-circle" style="color:#64b4ff;"></i>
+                            L'historique a été enregistré.
+                        </p>
+                    </div>
+                `,
+                icon: icon,
+                confirmButtonColor: confirmColor,
+                confirmButtonText: '<i class="fas fa-check me-1"></i> OK',
+                background: getComputedStyle(document.documentElement).getPropertyValue('--card-bg-light').trim() || '#fff',
+                color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#1a2744'
+            }).then(() => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-upload me-2"></i> Importer';
+                submitBtn.style.opacity = '1';
+                if (isSuccess) {
+                    window.location.reload();
+                }
+            });
+        })
+        .catch(error => {
+            Swal.fire({
+                title: '❌ Erreur réseau',
+                text: 'Impossible de communiquer avec le serveur.',
+                icon: 'error',
+                confirmButtonColor: '#dc3545'
+            });
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-upload me-2"></i> Importer';
+            submitBtn.style.opacity = '1';
+        });
+    }
+});
+</script>
+{% endblock %}

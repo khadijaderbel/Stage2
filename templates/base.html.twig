@@ -837,7 +837,7 @@
                         <i class="fas fa-crown me-1" style="color: var(--emerald);"></i> Administration
                     </div>
 
-                    <a href="#" class="sidebar-nav-item" data-tab="dashboard" data-title="Tableau de bord" data-subtitle="Vue d'ensemble de votre activité">
+                    <a href="{{ path('app_dashboard') }}" class="sidebar-nav-item" data-tab="dashboard" data-title="Tableau de bord" data-subtitle="Vue d'ensemble de votre activité">
                         <i class="fas fa-chart-line"></i>
                         <span class="sidebar-nav-text">Tableau de bord</span>
                     </a>
@@ -866,7 +866,7 @@
                         <span class="sidebar-nav-text">Historique d'import</span>
                     </a>
 
-                    <a href="#" class="sidebar-nav-item" data-tab="import" data-title="Nouvel import" data-subtitle="Importez un nouveau catalogue">
+                    <a href="{{ path('app_import_index') }}" class="sidebar-nav-item" data-tab="import" data-title="Nouvel import" data-subtitle="Importez un nouveau catalogue">
                         <i class="fas fa-upload"></i>
                         <span class="sidebar-nav-text">Nouvel import</span>
                     </a>

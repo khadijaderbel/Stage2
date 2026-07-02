@@ -1,0 +1,608 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}NOVAWIN - Tableau de bord{% endblock %}
+
+{% block page_title %}
+    <i class="fas fa-chart-pie me-2" style="color:var(--emerald);"></i>Tableau de bord
+{% endblock %}
+
+{% block page_subtitle %}Vue d'ensemble de votre activité et de votre catalogue{% endblock %}
+
+{% block body %}
+<div class="container-fluid p-0">
+
+    <!-- Bienvenue -->
+    <div class="welcome-section mb-4 p-4 rounded-4"
+         style="background:linear-gradient(135deg, rgba(0,255,163,0.08), rgba(0,255,163,0.02));
+                border:1px solid rgba(0,255,163,0.15);">
+        <div class="d-flex align-items-center justify-content-between flex-wrap">
+            <div>
+                <h4 style="color:var(--text-primary);">
+                    <i class="fas fa-hand-peace me-2" style="color:var(--emerald);"></i>
+                    Bonjour, <strong>{{ app.user.prenom ?? 'Administrateur' }}</strong>
+                </h4>
+                <p style="color:var(--text-secondary);font-size:0.9rem;margin:0;">
+                    Voici l'état de l'infrastructure et de votre catalogue de produits NOVAWIN.
+                </p>
+            </div>
+            <div>
+                <span class="badge rounded-pill px-3 py-2"
+                      style="background:rgba(0,255,163,0.12);color:var(--emerald);font-size:0.75rem;">
+                    <i class="fas fa-circle me-1" style="font-size:0.5rem;"></i>
+                    Système opérationnel
+                </span>
+                <span class="badge rounded-pill px-3 py-2 ms-2"
+                      style="background:rgba(100,180,255,0.12);color:#64b4ff;font-size:0.75rem;">
+                    <i class="fas fa-clock me-1"></i>
+                    {{ 'now'|date('d/m/Y H:i') }}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════
+         STATISTIQUES CARTES
+    ═══════════════════════════════════════ -->
+    <div class="row g-4 mb-4">
+        <div class="col-xl-3 col-lg-6 col-md-6">
+            <div class="stat-card" style="border-left-color: var(--emerald);">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="stat-icon" style="background:rgba(0,255,163,0.1);color:var(--emerald);">
+                            <i class="fas fa-box"></i>
+                        </div>
+                        <div class="stat-number">{{ totalProduits|default(0) }}</div>
+                        <div class="stat-label">Produits</div>
+                    </div>
+                    <div class="text-end">
+                        <span class="stat-status success">
+                            <i class="fas fa-check-circle"></i> {{ produitsActifs|default(0) }} actifs
+                        </span>
+                        {% if produitsRupture|default(0) > 0 %}
+                            <span class="stat-status warning d-block mt-1">
+                                <i class="fas fa-exclamation-triangle"></i> {{ produitsRupture }} rupture
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-lg-6 col-md-6">
+            <div class="stat-card" style="border-left-color: #3b82f6;">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="stat-icon" style="background:rgba(59,130,246,0.1);color:#3b82f6;">
+                            <i class="fas fa-tags"></i>
+                        </div>
+                        <div class="stat-number">{{ totalCategories|default(0) }}</div>
+                        <div class="stat-label">Catégories</div>
+                    </div>
+                    <div class="text-end">
+                        <span class="stat-status info">
+                            <i class="fas fa-check-circle"></i> Indexées
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-lg-6 col-md-6">
+            <div class="stat-card" style="border-left-color: #a855f7;">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="stat-icon" style="background:rgba(168,85,247,0.1);color:#a855f7;">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="stat-number">{{ totalUsers|default(0) }}</div>
+                        <div class="stat-label">Équipe d'administration</div>
+                    </div>
+                    <div class="text-end">
+                        <span class="stat-status info">
+                            <i class="fas fa-user-check"></i> Collaborateurs
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-lg-6 col-md-6">
+            <div class="stat-card" style="border-left-color: #f59e0b;">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="stat-icon" style="background:rgba(245,158,11,0.1);color:#f59e0b;">
+                            <i class="fas fa-upload"></i>
+                        </div>
+                        <div class="stat-number">
+                            {% if dernierImport %}
+                                <i class="fas fa-check-circle" style="color:#28a745;font-size:1.5rem;"></i>
+                            {% else %}
+                                <i class="fas fa-minus-circle" style="color:#6c757d;font-size:1.5rem;"></i>
+                            {% endif %}
+                        </div>
+                        <div class="stat-label">Dernier import</div>
+                    </div>
+                    <div class="text-end">
+                        {% if dernierImport %}
+                            <span class="stat-status success">
+                                <i class="fas fa-check-circle"></i> {{ dernierImport.statut|capitalize }}
+                            </span>
+                            <span style="display:block;font-size:0.7rem;color:var(--text-secondary);margin-top:0.2rem;">
+                                {{ dernierImport.dateImportation|date('d/m/Y H:i') }}
+                            </span>
+                        {% else %}
+                            <span class="stat-status warning">
+                                <i class="fas fa-clock"></i> Aucun import
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════
+         GRAPHIQUES
+    ═══════════════════════════════════════ -->
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="chart-card">
+                <div class="card-header-custom">
+                    <h6>
+                        <i class="fas fa-chart-area me-2" style="color:var(--emerald);"></i>
+                        Activité d'importation
+                    </h6>
+                    <small>Nombre total de produits traités lors des derniers imports</small>
+                </div>
+                <div class="chart-container" style="height:280px;">
+                    <canvas id="importChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="chart-card">
+                <div class="card-header-custom">
+                    <h6>
+                        <i class="fas fa-chart-pie me-2" style="color:var(--emerald);"></i>
+                        Répartition Catalogue
+                    </h6>
+                    <small>Part d'articles par catégories actives</small>
+                </div>
+                <div class="chart-container" style="height:280px;">
+                    <canvas id="categoryChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════
+         DERNIERS IMPORTS
+    ═══════════════════════════════════════ -->
+    <div class="card border-0 shadow-sm rounded-4 mt-4"
+         style="background:var(--card-bg-light);border:1px solid var(--border-color);">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="fw-bold mb-0" style="color:var(--text-primary);">
+                    <i class="fas fa-clock-rotate-left me-2" style="color:var(--emerald);"></i>
+                    Derniers imports
+                </h6>
+                <a href="{{ path('app_historique_importation_index') }}"
+                   style="color:var(--text-secondary);font-size:0.85rem;text-decoration:none;">
+                    Voir tout <i class="fas fa-arrow-right ms-1"></i>
+                </a>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-sm" style="color:var(--text-secondary);font-size:0.85rem;">
+                    <thead>
+                        <tr>
+                            <th style="color:var(--text-secondary);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.5px;">Fichier</th>
+                            <th style="color:var(--text-secondary);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.5px;">Date</th>
+                            <th style="color:var(--text-secondary);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.5px;">Statut</th>
+                            <th style="color:var(--text-secondary);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.5px;">Résultat</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if derniersImports is defined and derniersImports is not empty %}
+                            {% for h in derniersImports %}
+                                <tr>
+                                    <td style="font-weight:500;color:var(--text-primary);">
+                                        <i class="fas fa-file me-2" style="color:var(--text-secondary);"></i>
+                                        {{ h.nomFichier }}
+                                    </td>
+                                    <td>{{ h.dateImportation|date('d/m/Y H:i') }}</td>
+                                    <td>
+                                        {% if h.statut == 'succes' %}
+                                            <span class="badge rounded-pill px-2 py-1" style="background:rgba(40,167,69,0.15);color:#28a745;">
+                                                <i class="fas fa-check-circle me-1"></i> Succès
+                                            </span>
+                                        {% elseif h.statut == 'partiel' %}
+                                            <span class="badge rounded-pill px-2 py-1" style="background:rgba(255,193,7,0.15);color:#ffc107;">
+                                                <i class="fas fa-exclamation-triangle me-1"></i> Partiel
+                                            </span>
+                                        {% elseif h.statut == 'echec' %}
+                                            <span class="badge rounded-pill px-2 py-1" style="background:rgba(220,53,69,0.15);color:#dc3545;">
+                                                <i class="fas fa-times-circle me-1"></i> Échec
+                                            </span>
+                                        {% elseif h.statut == 'en_cours' %}
+                                            <span class="badge rounded-pill px-2 py-1" style="background:rgba(108,117,125,0.15);color:#6c757d;">
+                                                <i class="fas fa-spinner fa-spin me-1"></i> En cours
+                                            </span>
+                                        {% else %}
+                                            <span class="badge rounded-pill px-2 py-1" style="background:rgba(108,117,125,0.15);color:#6c757d;">
+                                                <i class="fas fa-clock me-1"></i> {{ h.statut }}
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td style="font-size:0.8rem;">
+                                        {% if h.nombreImportes > 0 %}
+                                            <span style="color:#28a745;">{{ h.nombreImportes }} importé(s)</span>
+                                        {% endif %}
+                                        {% if h.nombreErreurs > 0 %}
+                                            <span style="color:#dc3545;">{{ h.nombreErreurs }} erreur(s)</span>
+                                        {% endif %}
+                                        {% if h.nombreImportes == 0 and h.nombreErreurs == 0 %}
+                                            <span style="color:var(--text-secondary);">Aucune donnée</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center py-3" style="color:var(--text-secondary);">
+                                    <i class="fas fa-info-circle me-1"></i> Aucun historique d'import trouvé.
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+    /* ════════════════════════════════════
+       STATS CARDS
+    ════════════════════════════════════ */
+    .stat-card {
+        background: var(--card-bg-light);
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: 0 1px 3px var(--shadow-light);
+        transition: all 0.3s ease;
+        height: 100%;
+        border-left: 4px solid var(--accent-color);
+    }
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 25px var(--shadow-light);
+    }
+    .stat-card .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.3rem;
+        margin-bottom: 0.75rem;
+    }
+    .stat-card .stat-number {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 0.1rem;
+        font-family: 'Poppins', sans-serif;
+        transition: color 0.3s ease;
+    }
+    .stat-card .stat-label {
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+        font-weight: 500;
+        transition: color 0.3s ease;
+    }
+    .stat-card .stat-status {
+        display: inline-block;
+        padding: 0.15rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        margin-top: 0.5rem;
+    }
+    .stat-card .stat-status.success {
+        background: rgba(40,167,69,0.12);
+        color: #28a745;
+    }
+    .stat-card .stat-status.info {
+        background: rgba(59,130,246,0.12);
+        color: #3b82f6;
+    }
+    .stat-card .stat-status.warning {
+        background: rgba(245,158,11,0.12);
+        color: #f59e0b;
+    }
+
+    /* ════════════════════════════════════
+       CHART CARDS
+    ════════════════════════════════════ */
+    .chart-card {
+        background: var(--card-bg-light);
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: 0 1px 3px var(--shadow-light);
+        height: 100%;
+        transition: background 0.3s ease, box-shadow 0.3s ease;
+    }
+    .chart-card .card-header-custom {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--border-color);
+        transition: border-color 0.3s ease;
+    }
+    .chart-card .card-header-custom h6 {
+        margin: 0;
+        font-weight: 600;
+        color: var(--text-primary);
+        font-family: 'Poppins', sans-serif;
+        transition: color 0.3s ease;
+        font-size: 0.95rem;
+    }
+    .chart-card .card-header-custom small {
+        color: var(--text-secondary);
+        font-size: 0.7rem;
+        transition: color 0.3s ease;
+    }
+    .chart-container {
+        position: relative;
+        height: 280px;
+    }
+
+    /* ════════════════════════════════════
+       WELCOME
+    ════════════════════════════════════ */
+    .welcome-section {
+        transition: all 0.3s ease;
+    }
+    .welcome-section .stat-status {
+        display: inline-block;
+        padding: 0.15rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 600;
+    }
+
+    /* ════════════════════════════════════
+       TABLE
+    ════════════════════════════════════ */
+    .table {
+        color: var(--text-secondary) !important;
+    }
+    .table th {
+        color: var(--text-secondary) !important;
+        border-bottom-color: var(--border-color) !important;
+    }
+    .table td {
+        border-bottom-color: var(--border-color) !important;
+        color: var(--text-secondary) !important;
+    }
+    .table td .text-primary {
+        color: var(--text-primary) !important;
+    }
+
+    /* ════════════════════════════════════
+       RESPONSIVE
+    ════════════════════════════════════ */
+    @media (max-width: 768px) {
+        .stat-card .stat-number {
+            font-size: 1.5rem;
+        }
+        .chart-container {
+            height: 200px;
+        }
+        .welcome-section {
+            padding: 1rem !important;
+        }
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Variables globales pour les instances de graphiques
+    let importChartInstance = null;
+    let categoryChartInstance = null;
+
+    // Fonction pour obtenir les couleurs du thème
+    function getThemeColors() {
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        return {
+            textColor: getComputedStyle(document.documentElement)
+                .getPropertyValue('--text-secondary').trim() || (isDark ? '#94a3b8' : '#6c757d'),
+            gridColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+            cardBg: getComputedStyle(document.documentElement)
+                .getPropertyValue('--card-bg-light').trim() || (isDark ? '#0f172a' : '#ffffff'),
+            borderColor: getComputedStyle(document.documentElement)
+                .getPropertyValue('--border-color').trim() || (isDark ? '#1e293b' : '#e9ecef')
+        };
+    }
+
+    /* ═══════════════════════════════════════
+       GRAPHIQUE D'IMPORTATION (Ligne)
+    ═══════════════════════════════════════ */
+    function createImportChart() {
+        const ctx = document.getElementById('importChart');
+        if (!ctx) return;
+
+        const months = {{ importsMensuels.months|json_encode|raw }};
+        const counts = {{ importsMensuels.counts|json_encode|raw }};
+        const colors = getThemeColors();
+
+        const gradient = ctx.getContext('2d').createLinearGradient(0, 0, 0, 280);
+        gradient.addColorStop(0, 'rgba(0, 255, 163, 0.3)');
+        gradient.addColorStop(1, 'rgba(0, 255, 163, 0.0)');
+
+        if (importChartInstance) {
+            importChartInstance.destroy();
+        }
+
+        importChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: months,
+                datasets: [{
+                    label: 'Produits importés',
+                    data: counts,
+                    borderColor: '#00ffa3',
+                    backgroundColor: gradient,
+                    fill: true,
+                    tension: 0.4,
+                    pointBackgroundColor: '#00ffa3',
+                    pointBorderColor: colors.cardBg,
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: colors.gridColor
+                        },
+                        ticks: {
+                            font: { family: 'Inter', size: 11 },
+                            color: colors.textColor
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            font: { family: 'Inter', size: 11 },
+                            color: colors.textColor
+                        }
+                    }
+                },
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                }
+            }
+        });
+    }
+
+    /* ═══════════════════════════════════════
+       GRAPHIQUE CATÉGORIES (Donut)
+    ═══════════════════════════════════════ */
+    function createCategoryChart() {
+        const ctx = document.getElementById('categoryChart');
+        if (!ctx) return;
+
+        const categories = {{ repartitionCategories.categories|json_encode|raw }};
+        const counts = {{ repartitionCategories.counts|json_encode|raw }};
+        const colors = getThemeColors();
+
+        const colorPalette = ['#00ffa3', '#3b82f6', '#a855f7', '#f59e0b', '#ef4444', '#6c757d'];
+
+        if (categoryChartInstance) {
+            categoryChartInstance.destroy();
+        }
+
+        categoryChartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: categories,
+                datasets: [{
+                    data: counts,
+                    backgroundColor: colorPalette.slice(0, categories.length),
+                    borderColor: colors.cardBg,
+                    borderWidth: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 15,
+                            usePointStyle: true,
+                            pointStyle: 'circle',
+                            font: {
+                                family: 'Inter',
+                                size: 11
+                            },
+                            color: colors.textColor
+                        }
+                    }
+                },
+                cutout: '70%'
+            }
+        });
+    }
+
+    /* ═══════════════════════════════════════
+       INITIALISATION DES GRAPHIQUES
+    ═══════════════════════════════════════ */
+    createImportChart();
+    createCategoryChart();
+
+    /* ═══════════════════════════════════════
+       RECRÉER LES GRAPHIQUES AU CHANGEMENT DE THÈME
+    ═══════════════════════════════════════ */
+    // Observer les changements de thème
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (mutation.attributeName === 'data-theme') {
+                setTimeout(function() {
+                    createImportChart();
+                    createCategoryChart();
+                }, 100);
+            }
+        });
+    });
+
+    observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['data-theme']
+    });
+
+    // Aussi quand la page est entièrement chargée
+    window.addEventListener('load', function() {
+        createImportChart();
+        createCategoryChart();
+    });
+
+    // Redimensionnement
+    let resizeTimeout;
+    window.addEventListener('resize', function() {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(function() {
+            if (importChartInstance) {
+                importChartInstance.resize();
+            }
+            if (categoryChartInstance) {
+                categoryChartInstance.resize();
+            }
+        }, 250);
+    });
+});
+</script>
+{% endblock %}
