@@ -16,7 +16,7 @@
     "descriptionOriginale": "Poupon interactif qui pleure et rit, pile incluse pour un jeu immédiat.",
     "descriptionGeneree": "Poupon Interactive qui pleure et rit, pile incluse.",
     "statut": "inactif",
-    "categorie": "Accessoires"
+    "categorie": "femme"
   },
   {
     "sku": "JOU-002",
@@ -26,7 +26,7 @@
     "descriptionOriginale": "Train électrique complet avec rails et gare, pour enfants dès 3 ans.",
     "descriptionGeneree": "Train Électrique avec rails et gare, dès 3 ans.",
     "statut": "actif",
-    "categorie": "Accessoires"
+    "categorie": "femme"
   },
   {
     "sku": "MAI-001",
@@ -36,6 +36,6 @@
     "descriptionOriginale": "Trousse scolaire 40x20cm avec 5 compartiments imperméables.",
     "descriptionGeneree": "Trousse Scolaire 40x20cm, 5 compartiments imperméables.",
     "statut": "actif",
-    "categorie": "Accessoires"
+    "categorie": "femme"
   }
 ]
