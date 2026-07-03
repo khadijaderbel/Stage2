@@ -153,15 +153,20 @@ document.addEventListener('DOMContentLoaded', function () {
         return errors;
     }
 
-    if (form) {
-        form.addEventListener('submit', function (e) {
-            const errors = validateForm();
-            if (errors.length === 0) return;
+   if (form) {
+    form.addEventListener('submit', function (e) {
+        const errors = validateForm();
+        if (errors.length > 0) {
             e.preventDefault();
             swalError('⚠️ Validation du formulaire', buildErrorList(errors))
                 .then(() => { if (skuInput) { skuInput.focus(); skuInput.select(); } });
-        });
-    }
+            return;
+        }
+        const btn = form.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Génération IA de la description en cours...';
+    });
+}
 
     // Feedback visuel
     function styleInput(input, valid) {

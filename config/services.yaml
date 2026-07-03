@@ -1,7 +1,8 @@
 parameters:
     app.sender_email: '%env(MAILER_SENDER)%'
     app.sender_name: '%env(MAILER_SENDER_NAME)%'
-
+    gemini_api_key: '%env(GEMINI_API_KEY)%'
+    gemini_upload_dir: '%kernel.project_dir%/public/uploads/produits'
 services:
     _defaults:
         autowire: true
@@ -18,3 +19,7 @@ services:
         arguments:
             $senderEmail: '%app.sender_email%'
             $senderName: '%app.sender_name%'
+    App\Service\GeminiService:
+        arguments:
+            $apiKey: '%gemini_api_key%'
+            $uploadDir: '%gemini_upload_dir%'

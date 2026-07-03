@@ -15,6 +15,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\Routing\Attribute\Route;
+use App\Service\GeminiService;
 
 #[Route('/produit')]
 class ProduitController extends AbstractController
@@ -947,29 +948,43 @@ HTML;
     //  CRUD STANDARD
     // ══════════════════════════════════════════════════════════════════
 
-    #[Route('/new', name: 'app_produit_new', methods: ['GET', 'POST'])]
-    public function new(Request $request, EntityManagerInterface $em): Response
-    {
-        $this->denyAccessUnlessGranted('ROLE_ADMIN');
-        $produit = new Produit();
-        $produit->setUtilisateur($this->getUser());
-        $form = $this->createForm(ProduitType::class, $produit);
-        $form->handleRequest($request);
-        if ($form->isSubmitted() && $form->isValid()) {
-            $em->persist($produit);
-            $em->flush();
-            $this->addFlash('success', 'Le produit a été créé avec succès.');
-            return $this->redirectToRoute('app_produit_index');
-        }
-        if ($form->isSubmitted() && !$form->isValid()) {
-            $errors = [];
-            foreach ($form->getErrors(true) as $error) {
-                $errors[] = $error->getMessage();
+ #[Route('/new', name: 'app_produit_new', methods: ['GET', 'POST'])]
+public function new(Request $request, EntityManagerInterface $em, GeminiService $geminiService): Response
+{
+    $this->denyAccessUnlessGranted('ROLE_ADMIN');
+    $produit = new Produit();
+    $produit->setUtilisateur($this->getUser());
+    $form = $this->createForm(ProduitType::class, $produit);
+    $form->handleRequest($request);
+
+    if ($form->isSubmitted() && $form->isValid()) {
+
+        try {
+            $resultat = $geminiService->genererContenuIA($produit);
+            $produit->setDescriptionGeneree($resultat['description']);
+            if ($resultat['imageUrl'] !== null) {
+                $produit->setImageUrl($resultat['imageUrl']);
             }
-            $this->addFlash('error', implode('|', $errors));
+        } catch (\Throwable $e) {
+            $this->addFlash('error', 'La génération IA a échoué (produit tout de même enregistré) : ' . $e->getMessage());
         }
-        return $this->render('produit/new.html.twig', ['form' => $form->createView()]);
+
+        $em->persist($produit);
+        $em->flush();
+        $this->addFlash('success', 'Le produit a été créé avec succès.');
+        return $this->redirectToRoute('app_produit_index');
     }
+
+    if ($form->isSubmitted() && !$form->isValid()) {
+        $errors = [];
+        foreach ($form->getErrors(true) as $error) {
+            $errors[] = $error->getMessage();
+        }
+        $this->addFlash('error', implode('|', $errors));
+    }
+
+    return $this->render('produit/new.html.twig', ['form' => $form->createView()]);
+}
 
     #[Route('/{id}/edit', name: 'app_produit_edit', methods: ['GET', 'POST'])]
     public function edit(Request $request, Produit $produit, EntityManagerInterface $em): Response
