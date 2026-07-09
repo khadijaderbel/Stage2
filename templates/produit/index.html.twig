@@ -434,11 +434,30 @@
                 <p style="color:var(--text-secondary);font-size:0.9rem;">
                     Choisissez un fichier CSV, Excel ou JSON contenant vos produits.
                 </p>
-
+<!-- ══════════════════════════════════════
+     TÉLÉCHARGER UN TEMPLATE PRÊT À REMPLIR
+══════════════════════════════════════ -->
+<div class="template-download-box mb-3">
+    <div class="template-download-label">
+        <i class="fas fa-download" style="color:#64b4ff;"></i>
+        Pas sûr du format ? Téléchargez un template déjà prêt :
+    </div>
+    <div class="d-flex gap-2 flex-wrap mt-2">
+        <a href="{{ path('app_produit_import_template', {format: 'csv'}) }}"
+           class="template-download-btn csv">
+            <i class="fas fa-file-csv"></i> Template CSV
+        </a>
+        <a href="{{ path('app_produit_import_template', {format: 'excel'}) }}"
+           class="template-download-btn excel">
+            <i class="fas fa-file-excel"></i> Template Excel
+        </a>
+    </div>
+</div>
                 <!-- ══════════════════════════════════════
                      RÈGLES / SQUELETTE DU FICHIER D'IMPORT
                      (visible AVANT toute sélection de fichier)
                 ══════════════════════════════════════ -->
+
                 <div class="import-rules-box mb-3">
                     <button type="button" class="import-rules-toggle" id="importRulesToggle"
                             onclick="toggleImportRules()">
@@ -494,7 +513,7 @@
                                         <td><span class="badge-opt">Non</span></td>
                                         <td>Description fournie telle quelle.</td>
                                     </tr>
-                                    
+
                                     <tr>
                                         <td><code>image_url</code></td>
                                         <td><span class="badge-opt">Non</span></td>
@@ -764,6 +783,48 @@
         border-radius: 6px;
         font-size: 0.75rem;
     }
+.template-download-box {
+    border: 1px dashed rgba(100,180,255,0.4);
+    border-radius: 12px;
+    padding: 12px 14px;
+    background: rgba(100,180,255,0.06);
+}
+.template-download-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+.template-download-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    border: 1.5px solid transparent;
+}
+.template-download-btn.csv {
+    background: rgba(0,255,163,0.1);
+    color: var(--emerald);
+    border-color: rgba(0,255,163,0.3);
+}
+.template-download-btn.csv:hover {
+    background: var(--emerald);
+    color: #0b1329;
+}
+.template-download-btn.excel {
+    background: rgba(29,111,66,0.1);
+    color: #1d6f42;
+    border-color: rgba(29,111,66,0.3);
+}
+.template-download-btn.excel:hover {
+    background: #1d6f42;
+    color: #fff;
+}
+
     .badge-req {
         background: rgba(220,53,69,0.15); color: #dc3545;
         padding: 2px 8px; border-radius: 20px; font-size: 0.7rem; font-weight: 600;
@@ -1232,7 +1293,61 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
                 return;
             }
+if (data.action === 'format_incompatible') {
+    const lignesListe = data.lignes.map(l => `
+        <li style="margin:4px 0;color:var(--text-secondary);font-size:0.85rem;">
+            Ligne ${l.ligne} (SKU: ${l.sku}) :
+            <code style="background:rgba(220,53,69,0.1);color:#dc3545;padding:1px 6px;border-radius:4px;">${l.valeur}</code>
+        </li>
+    `).join('');
 
+    Swal.fire({
+        title: '⚠️ Format des caractéristiques incompatible',
+        html: `
+            <div style="text-align:left;padding:4px 0;">
+                <p style="color:var(--text-secondary);margin-bottom:12px;">
+                    La virgule et le point-virgule ne sont pas autorisés comme séparateurs de caractéristiques.
+                    Utilisez un retour à la ligne (Alt+Entrée) ou un tableau JSON.
+                </p>
+                <ul style="list-style:none;padding:0;margin:8px 0 16px 0;max-height:220px;overflow-y:auto;">
+                    ${lignesListe}
+                </ul>
+                <p style="color:var(--text-secondary);font-size:0.85rem;">
+                    <i class="fas fa-magic" style="color:#64b4ff;"></i>
+                    Corrigez le fichier manuellement, ou laissez le système scinder automatiquement
+                    ces valeurs sur les virgules/points-virgules.
+                </p>
+            </div>
+        `,
+        icon: 'warning',
+        showCancelButton: true,
+        showDenyButton: true,
+        confirmButtonText: '<i class="fas fa-magic me-1"></i> Corriger automatiquement',
+        denyButtonText: '<i class="fas fa-times me-1"></i> Annuler l\'import',
+        cancelButtonText: 'Fermer',
+        confirmButtonColor: '#00ffa3',
+        denyButtonColor: '#dc3545',
+        background: getComputedStyle(document.documentElement).getPropertyValue('--card-bg-light').trim() || '#fff',
+        color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#1a2744',
+        customClass: {
+            popup: 'rounded-4',
+            confirmButton: 'btn fw-semibold px-4 py-2 rounded-pill',
+            denyButton: 'btn btn-danger px-4 py-2 rounded-pill'
+        }
+    }).then(result => {
+        if (result.isConfirmed) {
+            formData.append('fixFormat', '1');
+            reimportFile(formData);
+        } else {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('importModal'));
+            if (modal) modal.hide();
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-upload me-1"></i> Importer';
+            submitBtn.style.opacity = '1';
+        }
+    });
+    return;
+}
             // Gérer les erreurs
             if (data.action === 'erreur') {
                 Swal.fire({
@@ -1372,7 +1487,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 formData.append('skipCategories', '1');
                 return reimportFile(formData);
             }
-
+if (data.action === 'format_incompatible') {
+    formData.append('fixFormat', '1');
+    return reimportFile(formData); // auto-corrige sans re-demander
+}
             if (data.action === 'erreur') {
                 Swal.fire({
                     title: '❌ Erreur',

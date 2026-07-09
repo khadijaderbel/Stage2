@@ -22,4 +22,9 @@ services:
     App\Service\GeminiService:
         arguments:
             $apiKey: '%gemini_api_key%'
-            $uploadDir: '%gemini_upload_dir%'
+            $uploadDir: '%kernel.project_dir%/public/uploads/produits%'
+    App\Service\GroqService:
+        arguments:
+            $apiKey: '%env(GROQ_API_KEY)%'
+            $uploadDir: '%kernel.project_dir%/public/uploads/produits'
+

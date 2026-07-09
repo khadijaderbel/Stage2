@@ -13,8 +13,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
         :root {
@@ -492,6 +490,119 @@
             border-left: 1px solid var(--border-color);
             transition: border-color 0.3s ease;
         }
+        /* ════════════════════════════════════
+   DROPDOWN PROFIL (navbar)
+════════════════════════════════════ */
+.header-user-dropdown {
+    padding-left: 12px;
+    border-left: 1px solid var(--border-color);
+    transition: border-color 0.3s ease;
+}
+
+.header-user-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: transparent;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.header-user-toggle:hover {
+    background: rgba(0, 255, 163, 0.08);
+}
+
+.header-user-toggle .user-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--emerald), var(--accent-color));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.header-user-toggle .user-name-text {
+    font-weight: 500;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+
+.header-user-toggle .user-caret {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    transition: transform 0.25s ease;
+}
+
+.header-user-toggle[aria-expanded="true"] .user-caret {
+    transform: rotate(180deg);
+    color: var(--emerald);
+}
+
+/* Menu déroulant */
+.user-dropdown-menu {
+    min-width: 240px;
+    background: var(--card-bg-light);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 8px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.18);
+    margin-top: 10px !important;
+}
+
+.user-dropdown-header {
+    padding: 8px 12px 10px 12px;
+}
+
+.user-dropdown-divider {
+    border-color: var(--border-color);
+    opacity: 0.6;
+    margin: 4px 0;
+}
+
+.user-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 0.87rem;
+    color: var(--text-primary);
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.user-dropdown-item i {
+    width: 18px;
+    text-align: center;
+    color: var(--text-secondary);
+    transition: color 0.15s ease;
+}
+
+.user-dropdown-item:hover {
+    background: var(--bg-body);
+    color: var(--emerald);
+}
+
+.user-dropdown-item:hover i {
+    color: var(--emerald);
+}
+
+.user-dropdown-item.danger:hover {
+    background: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+}
+
+.user-dropdown-item.danger:hover i {
+    color: #dc3545;
+}
 
         .header-user .user-avatar {
             width: 38px;
@@ -534,7 +645,52 @@
             font-weight: 400;
             transition: opacity 0.3s ease;
         }
-
+.ai-model-menu {
+    min-width: 260px;
+    background: var(--card-bg-light);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 8px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.18);
+    margin-top: 10px !important;
+}
+.ai-model-header {
+    padding: 6px 12px 8px 12px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+}
+.ai-model-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 0.88rem;
+    color: var(--text-primary);
+    background: transparent;
+    border: none;
+    text-align: left;
+    transition: background 0.15s ease;
+}
+.ai-model-item i:first-child { width: 18px; text-align: center; color: var(--text-secondary); }
+.ai-model-item span { flex: 1; }
+.ai-model-item:hover { background: var(--bg-body); }
+.ai-model-check { display: none; color: var(--emerald); }
+.ai-model-item.active .ai-model-check { display: inline-block; }
+.ai-model-item.active { background: rgba(0,255,163,0.08); color: var(--emerald); }
+.ai-model-divider { border-color: var(--border-color); opacity: 0.6; margin: 4px 0; }
+.ai-model-footer {
+    padding: 6px 12px 2px 12px;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+}
         .header-user .user-name-link:hover .click-hint {
             opacity: 1;
             color: var(--emerald);
@@ -561,112 +717,6 @@
             color: var(--text-primary);
             transition: color 0.3s ease;
         }
-
-        .stat-card {
-            background: var(--card-bg-light);
-            border-radius: 16px;
-            padding: 1.5rem;
-            box-shadow: 0 1px 3px var(--shadow-light);
-            transition: all 0.3s ease;
-            height: 100%;
-            border-left: 4px solid var(--accent-color);
-        }
-
-        .stat-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 8px 25px var(--shadow-light);
-        }
-
-        .stat-card .stat-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.3rem;
-            margin-bottom: 0.75rem;
-        }
-
-        .stat-card .stat-number {
-            font-size: 1.8rem;
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: 0.1rem;
-            font-family: 'Poppins', sans-serif;
-            transition: color 0.3s ease;
-        }
-
-        .stat-card .stat-label {
-            color: var(--text-secondary);
-            font-size: 0.85rem;
-            font-weight: 500;
-            transition: color 0.3s ease;
-        }
-
-        .stat-card .stat-status {
-            display: inline-block;
-            padding: 0.15rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.7rem;
-            font-weight: 600;
-            margin-top: 0.5rem;
-        }
-
-        .stat-card .stat-status.success {
-            background: #d4edda;
-            color: #155724;
-        }
-
-        .stat-card .stat-status.info {
-            background: #d1ecf1;
-            color: #0c5460;
-        }
-
-        .stat-card .stat-status.warning {
-            background: #fff3cd;
-            color: #856404;
-        }
-
-
-        .chart-card {
-            background: var(--card-bg-light);
-            border-radius: 16px;
-            padding: 1.5rem;
-            box-shadow: 0 1px 3px var(--shadow-light);
-            height: 100%;
-            transition: background 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        .chart-card .card-header-custom {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 1px solid var(--border-color);
-            transition: border-color 0.3s ease;
-        }
-
-        .chart-card .card-header-custom h6 {
-            margin: 0;
-            font-weight: 600;
-            color: var(--text-primary);
-            font-family: 'Poppins', sans-serif;
-            transition: color 0.3s ease;
-        }
-
-        .chart-card .card-header-custom small {
-            color: var(--text-secondary);
-            font-size: 0.75rem;
-            transition: color 0.3s ease;
-        }
-
-        .chart-container {
-            position: relative;
-            height: 250px;
-        }
-
 
         @media (max-width: 992px) {
             .sidebar {
@@ -793,10 +843,6 @@
             .content-body {
                 padding: 1rem;
             }
-
-            .stat-card .stat-number {
-                font-size: 1.5rem;
-            }
         }
     </style>
 
@@ -852,7 +898,7 @@
     <span class="sidebar-nav-text">Catégories</span>
 </a>
 
-                    <a href="{{ path('app_user') }}" class="sidebar-nav-item active" data-tab="users" data-title="Gestion des Utilisateurs" data-subtitle="Gérez les accès de votre équipe">
+                    <a href="{{ path('app_user') }}" class="sidebar-nav-item" data-tab="users" data-title="Gestion des Utilisateurs" data-subtitle="Gérez les accès de votre équipe">
                         <i class="fas fa-users"></i>
                         <span class="sidebar-nav-text">Utilisateurs</span>
                     </a>
@@ -877,7 +923,7 @@
                         <i class="fas fa-users-cog me-1" style="color: var(--emerald);"></i> Gestion des utilisateurs
                     </div>
 
-                    <a href="{{ path('app_user') }}" class="sidebar-nav-item active" data-tab="users" data-title="Gestion des Utilisateurs" data-subtitle="Gérez les accès de votre équipe">
+                    <a href="{{ path('app_user') }}" class="sidebar-nav-item" data-tab="users" data-title="Gestion des Utilisateurs" data-subtitle="Gérez les accès de votre équipe">
                         <i class="fas fa-users"></i>
                         <span class="sidebar-nav-text">Utilisateurs</span>
                     </a>
@@ -950,8 +996,8 @@
                     <i class="fas fa-bars" id="collapseIcon"></i>
                 </button>
                 <div class="page-title">
-                    <h4 id="pageTitle">{% block page_title %}Gestion des Utilisateurs{% endblock %}</h4>
-                    <p id="pageSubtitle">{% block page_subtitle %}Gérez les accès de votre équipe{% endblock %}</p>
+                    <h4 id="pageTitle">{% block page_title %}{% endblock %}</h4>
+                    <p id="pageSubtitle">{% block page_subtitle %}{% endblock %}</p>
                 </div>
             </div>
             <div class="top-header-right">
@@ -959,123 +1005,96 @@
                 <button class="header-btn" onclick="toggleTheme()" title="Changer le thème">
                     <i class="fas fa-moon" id="themeIcon"></i>
                 </button>
-
+{% if is_granted('ROLE_ADMIN') %}
+<!-- Sélecteur de modèle IA -->
+<div class="dropdown ai-model-dropdown">
+    <button class="header-btn ai-model-toggle" type="button" id="aiModelToggle"
+            data-bs-toggle="dropdown" aria-expanded="false" title="Choisir le modèle IA">
+        <i class="fas fa-robot"></i>
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end ai-model-menu" aria-labelledby="aiModelToggle">
+        <li class="ai-model-header">Modèle IA pour la génération</li>
+        <li>
+            <button type="button" class="dropdown-item ai-model-item" data-provider="gemini">
+                <i class="fas fa-gem"></i>
+                <span>Gemini</span>
+                <i class="fas fa-check ai-model-check"></i>
+            </button>
+        </li>
+        <li>
+            <button type="button" class="dropdown-item ai-model-item" data-provider="groq">
+                <i class="fas fa-bolt"></i>
+                <span>Groq</span>
+                <i class="fas fa-check ai-model-check"></i>
+            </button>
+        </li>
+        <li><hr class="dropdown-divider ai-model-divider"></li>
+        <li class="ai-model-footer">
+            <i class="fas fa-info-circle"></i>
+            Bascule automatique si l'un des deux est indisponible.
+        </li>
+    </ul>
+</div>
+{% endif %}
                 <!-- Notifications -->
                 <button class="header-btn" onclick="toggleNotifications()" title="Notifications">
                     <i class="fas fa-bell"></i>
                     <span class="notification-dot"></span>
                 </button>
 
-                <!-- User Profile - Cliquable -->
-                <div class="header-user">
-                    <div class="user-avatar">
-                        {% if app.user %}
-                            {{ app.user.prenom|first ~ app.user.nom|first }}
-                        {% else %}
-                            AV
-                        {% endif %}
-                    </div>
-                    <a href="{{ path('app_user_profile') }}" class="user-name-link" title="Cliquez pour modifier votre profil">
-                        {% if app.user %}
-                            {{ app.user.prenom }}
-                        {% else %}
-                            Admin
-                        {% endif %}
-                        <span class="profile-icon"><i class="fas fa-chevron-right"></i></span>
-                        <span class="click-hint">(profil)</span>
-                    </a>
-                </div>
+                <!-- User Profile - Dropdown (Profil / Déconnexion) -->
+<div class="dropdown header-user-dropdown">
+    <button class="header-user-toggle" type="button" id="userMenuToggle"
+            data-bs-toggle="dropdown" aria-expanded="false">
+        <div class="user-avatar">
+            {% if app.user %}
+                {{ app.user.prenom|first ~ app.user.nom|first }}
+            {% else %}
+                AV
+            {% endif %}
+        </div>
+        <span class="user-name-text">
+            {% if app.user %}
+                {{ app.user.prenom }}
+            {% else %}
+                Admin
+            {% endif %}
+        </span>
+        <i class="fas fa-chevron-down user-caret"></i>
+    </button>
+
+    <ul class="dropdown-menu dropdown-menu-end user-dropdown-menu" aria-labelledby="userMenuToggle">
+        <li class="user-dropdown-header">
+            <div class="fw-semibold" style="color:var(--text-primary);">
+                {% if app.user %}
+                    {{ app.user.prenom }} {{ app.user.nom }}
+                {% else %}
+                    Alexandre V.
+                {% endif %}
+            </div>
+            <div style="font-size:0.75rem;color:var(--text-secondary);">
+                {% if app.user %}{{ app.user.email }}{% else %}—{% endif %}
+            </div>
+        </li>
+        <li><hr class="dropdown-divider user-dropdown-divider"></li>
+        <li>
+            <a class="dropdown-item user-dropdown-item" href="{{ path('app_user_profile') }}">
+                <i class="fas fa-user"></i> Mon profil
+            </a>
+        </li>
+        <li>
+            <a class="dropdown-item user-dropdown-item danger" href="{{ path('app_logout') }}">
+                <i class="fas fa-power-off"></i> Déconnexion
+            </a>
+        </li>
+    </ul>
+</div>
             </div>
         </header>
 
         <!-- Content Body -->
         <div class="content-body">
-            {% block body %}
-            <div class="container-fluid p-0">
-                <!-- Si l'utilisateur est ADMIN ou SUPER_ADMIN, afficher le dashboard -->
-                {% if is_granted('ROLE_ADMIN') %}
-                    <div class="row g-4 mb-4">
-                        <div class="col-xl-3 col-lg-6 col-md-6">
-                            <div class="stat-card" style="border-left-color: var(--emerald);">
-                                <div class="stat-icon" style="background: rgba(0,255,163,0.1); color: var(--emerald);">
-                                    <i class="fas fa-box"></i>
-                                </div>
-                                <div class="stat-number">5</div>
-                                <div class="stat-label">Produits Actifs</div>
-                                <span class="stat-status success"><i class="fas fa-check-circle"></i> En Ligne</span>
-                            </div>
-                        </div>
-
-                        <div class="col-xl-3 col-lg-6 col-md-6">
-                            <div class="stat-card" style="border-left-color: #28a745;">
-                                <div class="stat-icon" style="background: #d4edda; color: #28a745;">
-                                    <i class="fas fa-tags"></i>
-                                </div>
-                                <div class="stat-number">4</div>
-                                <div class="stat-label">Catégories catalogue</div>
-                                <span class="stat-status info"><i class="fas fa-check-circle"></i> Indexées</span>
-                            </div>
-                        </div>
-
-                        <div class="col-xl-3 col-lg-6 col-md-6">
-                            <div class="stat-card" style="border-left-color: #ffc107;">
-                                <div class="stat-icon" style="background: #fff3cd; color: #856404;">
-                                    <i class="fas fa-users"></i>
-                                </div>
-                                <div class="stat-number">4</div>
-                                <div class="stat-label">Équipe d'administration</div>
-                                <span class="stat-status info"><i class="fas fa-user-check"></i> Collaborateurs</span>
-                            </div>
-                        </div>
-
-                        <div class="col-xl-3 col-lg-6 col-md-6">
-                            <div class="stat-card" style="border-left-color: #17a2b8;">
-                                <div class="stat-icon" style="background: #d1ecf1; color: #0c5460;">
-                                    <i class="fas fa-upload"></i>
-                                </div>
-                                <div class="stat-number">
-                                    <i class="fas fa-check-circle" style="color: #28a745; font-size: 1.5rem;"></i>
-                                </div>
-                                <div class="stat-label">Dernier import</div>
-                                <span class="stat-status success"><i class="fas fa-check-circle"></i> Réussi</span>
-                                <span style="display: block; font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.2rem;">Système stable</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row g-4">
-                        <div class="col-lg-8">
-                            <div class="chart-card">
-                                <div class="card-header-custom">
-                                    <h6><i class="fas fa-chart-area" style="color: var(--emerald);"></i> Activité d'importation</h6>
-                                    <small>Nombre total de produits traités lors des derniers imports</small>
-                                </div>
-                                <div class="chart-container">
-                                    <canvas id="importChart"></canvas>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-lg-4">
-                            <div class="chart-card">
-                                <div class="card-header-custom">
-                                    <h6><i class="fas fa-chart-pie" style="color: var(--emerald);"></i> Répartition Catalogue</h6>
-                                    <small>Part d'articles par catégories actives</small>
-                                </div>
-                                <div class="chart-container">
-                                    <canvas id="categoryChart"></canvas>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                {% else %}
-                    <div class="text-center py-5" style="color: var(--text-secondary);">
-                        <i class="fas fa-lock fa-3x d-block mb-3" style="color: var(--text-secondary); opacity: 0.3;"></i>
-                        <h4 style="color: var(--text-primary);">Accès restreint</h4>
-                        <p>Vous n'avez pas les droits nécessaires pour accéder à cette page.</p>
-                    </div>
-                {% endif %}
-            </div>
-            {% endblock %}
+            {% block body %}{% endblock %}
         </div>
     </div>
 
@@ -1123,8 +1142,6 @@
                 localStorage.setItem('theme', 'dark');
                 showToast('Mode sombre activé');
             }
-
-            updateChartColors();
         }
 
         // Restore theme
@@ -1242,105 +1259,37 @@
             showToast('Vous avez 3 nouvelles notifications');
         }
 
-        function updateChartColors() {
-            if (window.importChartInstance) {
-                window.importChartInstance.update();
-            }
-            if (window.categoryChartInstance) {
-                window.categoryChartInstance.update();
-            }
+        {% if is_granted('ROLE_ADMIN') %}
+        const currentAiProvider = "{{ app.request.session.get('ai_provider', 'gemini') }}";
+
+        function markActiveAiProvider(provider) {
+            document.querySelectorAll('.ai-model-item').forEach(item => {
+                item.classList.toggle('active', item.dataset.provider === provider);
+            });
         }
+        markActiveAiProvider(currentAiProvider);
 
-
-        {% block javascripts %}
-        document.addEventListener('DOMContentLoaded', function() {
-            const ctx1 = document.getElementById('importChart');
-            if (ctx1) {
-                const gradient = ctx1.getContext('2d').createLinearGradient(0, 0, 0, 250);
-                gradient.addColorStop(0, 'rgba(0, 255, 163, 0.3)');
-                gradient.addColorStop(1, 'rgba(0, 255, 163, 0.0)');
-
-                window.importChartInstance = new Chart(ctx1, {
-                    type: 'line',
-                    data: {
-                        labels: ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aoû', 'Sep', 'Oct'],
-                        datasets: [{
-                            label: 'Produits importés',
-                            data: [120, 140, 160, 180, 200, 220, 240, 220, 200, 180],
-                            borderColor: '#00ffa3',
-                            backgroundColor: gradient,
-                            fill: true,
-                            tension: 0.4,
-                            pointBackgroundColor: '#00ffa3',
-                            pointBorderColor: '#fff',
-                            pointBorderWidth: 2,
-                            pointRadius: 4
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                display: false
-                            }
-                        },
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                grid: {
-                                    color: 'rgba(0,0,0,0.05)'
-                                },
-                                ticks: {
-                                    font: { family: 'Inter' }
-                                }
-                            },
-                            x: {
-                                grid: {
-                                    display: false
-                                },
-                                ticks: {
-                                    font: { family: 'Inter' }
-                                }
-                            }
-                        }
+        document.querySelectorAll('.ai-model-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const provider = this.dataset.provider;
+                fetch('{{ path("app_ai_set_provider") }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ provider })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        markActiveAiProvider(provider);
+                        showToast(data.message, 'Modèle IA');
                     }
-                });
-            }
-
-            const ctx2 = document.getElementById('categoryChart');
-            if (ctx2) {
-                window.categoryChartInstance = new Chart(ctx2, {
-                    type: 'doughnut',
-                    data: {
-                        labels: ['Audio', 'Accessoires', 'Périphériques', 'Smartphones'],
-                        datasets: [{
-                            data: [2, 1, 2, 0],
-                            backgroundColor: ['#00ffa3', '#3b82f6', '#a855f7', '#f59e0b'],
-                            borderColor: ['#fff', '#fff', '#fff', '#fff'],
-                            borderWidth: 3
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                position: 'bottom',
-                                labels: {
-                                    padding: 15,
-                                    usePointStyle: true,
-                                    pointStyle: 'circle',
-                                    font: { family: 'Inter', size: 11 }
-                                }
-                            }
-                        },
-                        cutout: '70%'
-                    }
-                });
-            }
+                })
+                .catch(() => showToast('Impossible de changer de modèle IA.', 'Erreur'));
+            });
         });
-        {% endblock %}
+        {% endif %}
+
+        {% block javascripts %}{% endblock %}
     </script>
 </body>
 </html>

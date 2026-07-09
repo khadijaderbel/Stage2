@@ -7,6 +7,7 @@ use App\Entity\HistoriqueImportation;
 use App\Entity\Produit;
 use App\Form\ProduitType;
 use App\Repository\HistoriqueImportationRepository;
+use App\Service\AiProviderManager;
 use Doctrine\ORM\EntityManagerInterface;
 use Knp\Component\Pager\PaginatorInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -15,7 +16,6 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\Routing\Attribute\Route;
-use App\Service\GeminiService;
 
 #[Route('/produit')]
 class ProduitController extends AbstractController
@@ -56,22 +56,12 @@ class ProduitController extends AbstractController
         ]);
     }
 
-    // ══════════════════════════════════════════════════════════════════
-    //  IMPORT — tout en JSON/AJAX
-    // ══════════════════════════════════════════════════════════════════
-
-    /**
-     * Route principale d'import.
-     * Toujours appelée en AJAX (fetch). Retourne toujours du JSON.
-     *
-     * Paramètres POST :
-     *   - importFile        : le fichier
-     *   - skipCategories    : "1" pour ignorer les produits dont la catégorie est inconnue
-     */
     #[Route('/import', name: 'app_produit_import', methods: ['POST'])]
-    public function import(Request $request, EntityManagerInterface $em): JsonResponse
+    public function import(Request $request, EntityManagerInterface $em, AiProviderManager $aiProviderManager): JsonResponse
     {
         $this->denyAccessUnlessGranted('ROLE_ADMIN');
+
+        $aiProvider = $request->getSession()->get('ai_provider', 'gemini');
 
         $file = $request->files->get('importFile');
         if (!$file) {
@@ -109,7 +99,18 @@ class ProduitController extends AbstractController
                 'message' => 'Le fichier est vide ou ne contient aucune ligne valide.',
             ], 422);
         }
+        $fixFormat        = (bool) $request->request->get('fixFormat', false);
+        $problemesFormat  = $this->detecterCaracteristiquesIncompatibles($rows);
 
+        if (!empty($problemesFormat) && !$fixFormat) {
+            return new JsonResponse([
+                'action'  => 'format_incompatible',
+                'lignes'  => $problemesFormat,
+                'message' => count($problemesFormat) === 1
+                    ? '1 ligne utilise des virgules/points-virgules dans les caractéristiques (non autorisé).'
+                    : count($problemesFormat) . ' lignes utilisent des virgules/points-virgules dans les caractéristiques (non autorisé).',
+            ]);
+        }
         // ── 2. Détecter les catégories inconnues ─────────────────────
         $categoriesConnues   = $this->chargerCategoriesIndexees($em);
         $categoriesInconnues = $this->detecterCategoriesInconnues($rows, $categoriesConnues);
@@ -207,7 +208,8 @@ class ProduitController extends AbstractController
 
             // ── Caractéristiques → liste normalisée ───────────────────
             $caracteristiques = $this->normaliserCaracteristiques(
-                $row['caracteristiques'] ?? $row['caractéristiques'] ?? null
+                $row['caracteristiques'] ?? $row['caractéristiques'] ?? null,
+                $fixFormat
             );
 
             // ── Résolution catégorie ───────────────────────────────────
@@ -219,11 +221,12 @@ class ProduitController extends AbstractController
             // ── Cherche si le produit existe déjà (par SKU) ───────────
             $produitExistant = $em->getRepository(Produit::class)->findOneBy(['sku' => $sku]);
 
+            $descriptionGenereeFile = trim($row['description_generee'] ?? $row['description_générée'] ?? '');
+
             try {
                 if ($produitExistant) {
                     // ── Produit déjà en base ──────────────────────────
                     if ($produitExistant->getStatut() === $statutImport) {
-                        // Même statut → déjà existant, on signale et on ignore
                         $journalAvertissements[] = [
                             'ligne'         => $lineNum,
                             'sku'           => $sku,
@@ -233,15 +236,11 @@ class ProduitController extends AbstractController
                         continue;
                     }
 
-                    // Statut différent → mise à jour
                     $ancienStatut = $produitExistant->getStatut();
                     $produitExistant->setNom($nom);
                     $produitExistant->setStatut($statutImport);
                     $produitExistant->setCaracteristiques($caracteristiques);
                     $produitExistant->setDescriptionOriginale($descOriginale ?: null);
-                    $produitExistant->setDescriptionGeneree(
-                        trim($row['description_generee'] ?? $row['description_générée'] ?? '') ?: null
-                    );
                     if ($imageUrl !== '') {
                         $produitExistant->setImageUrl($imageUrl);
                     }
@@ -249,6 +248,29 @@ class ProduitController extends AbstractController
                         $produitExistant->setCategorie($categorieEntity);
                     }
                     $produitExistant->setDateModification(new \DateTime());
+
+                    if ($descriptionGenereeFile !== '') {
+                        $produitExistant->setDescriptionGeneree($descriptionGenereeFile);
+                    } else {
+                        try {
+                            $resultatIA = $aiProviderManager->genererContenuIA($produitExistant, $aiProvider);
+                            $produitExistant->setDescriptionGeneree($resultatIA['description']);
+                            if ($resultatIA['imageUrl'] !== null) {
+                                $produitExistant->setImageUrl($resultatIA['imageUrl']);
+                            }
+                            if ($resultatIA['fallback']) {
+                                $journalAvertissements[] = [
+                                    'ligne' => $lineNum, 'sku' => $sku,
+                                    'avertissement' => "Génération IA via {$resultatIA['provider']} (bascule automatique).",
+                                ];
+                            }
+                        } catch (\Throwable $e) {
+                            $journalAvertissements[] = [
+                                'ligne' => $lineNum, 'sku' => $sku,
+                                'avertissement' => 'Génération IA indisponible pour ce produit.',
+                            ];
+                        }
+                    }
 
                     $journalAvertissements[] = [
                         'ligne'         => $lineNum,
@@ -265,14 +287,35 @@ class ProduitController extends AbstractController
                     $produit->setStatut($statutImport);
                     $produit->setCaracteristiques($caracteristiques);
                     $produit->setDescriptionOriginale($descOriginale ?: null);
-                    $produit->setDescriptionGeneree(
-                        trim($row['description_generee'] ?? $row['description_générée'] ?? '') ?: null
-                    );
                     $produit->setImageUrl($imageUrl ?: null);
                     $produit->setUtilisateur($user);
                     if ($categorieEntity) {
                         $produit->setCategorie($categorieEntity);
                     }
+
+                    if ($descriptionGenereeFile !== '') {
+                        $produit->setDescriptionGeneree($descriptionGenereeFile);
+                    } else {
+                        try {
+                            $resultatIA = $aiProviderManager->genererContenuIA($produit, $aiProvider);
+                            $produit->setDescriptionGeneree($resultatIA['description']);
+                            if ($resultatIA['imageUrl'] !== null) {
+                                $produit->setImageUrl($resultatIA['imageUrl']);
+                            }
+                            if ($resultatIA['fallback']) {
+                                $journalAvertissements[] = [
+                                    'ligne' => $lineNum, 'sku' => $sku,
+                                    'avertissement' => "Génération IA via {$resultatIA['provider']} (bascule automatique).",
+                                ];
+                            }
+                        } catch (\Throwable $e) {
+                            $journalAvertissements[] = [
+                                'ligne' => $lineNum, 'sku' => $sku,
+                                'avertissement' => 'Génération IA indisponible pour ce produit.',
+                            ];
+                        }
+                    }
+
                     $em->persist($produit);
                     $compteurs['crees']++;
                 }
@@ -348,6 +391,61 @@ class ProduitController extends AbstractController
     }
 
     // ══════════════════════════════════════════════════════════════════
+    //  TEMPLATE D'IMPORT (téléchargeable, prêt à remplir)
+    // ══════════════════════════════════════════════════════════════════
+
+    #[Route('/import/template', name: 'app_produit_import_template', methods: ['GET'])]
+    public function downloadImportTemplate(Request $request): Response
+    {
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
+
+        $format = $request->query->get('format', 'csv');
+
+        // Squelette vide : uniquement les en-têtes, aucune ligne d'exemple.
+        // "caracteristiques" est volontairement placée en dernière colonne.
+        $headers = ['sku', 'nom', 'categorie', 'statut', 'description_originale', 'image_url', 'caracteristiques'];
+        $exemples = [];
+
+        return $format === 'excel'
+            ? $this->genererTemplateExcel($headers, $exemples)
+            : $this->genererTemplateCsv($headers, $exemples);
+    }
+
+    private function genererTemplateCsv(array $headers, array $exemples): StreamedResponse
+    {
+        $response = new StreamedResponse(function () use ($headers, $exemples) {
+            $handle = fopen('php://output', 'w');
+            fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            fputcsv($handle, $headers, ';');
+            foreach ($exemples as $row) {
+                fputcsv($handle, $row, ';');
+            }
+            fclose($handle);
+        });
+        $response->headers->set('Content-Type', 'text/csv; charset=UTF-8');
+        $response->headers->set('Content-Disposition', 'attachment; filename="template_import_produits.csv"');
+        return $response;
+    }
+
+    private function genererTemplateExcel(array $headers, array $exemples): StreamedResponse
+    {
+        // Même astuce tabulation que exportExcel() : ouvrable directement par Excel,
+        // sans dépendre de PhpSpreadsheet.
+        $response = new StreamedResponse(function () use ($headers, $exemples) {
+            $handle = fopen('php://output', 'w');
+            fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            fputcsv($handle, $headers, "\t");
+            foreach ($exemples as $row) {
+                fputcsv($handle, $row, "\t");
+            }
+            fclose($handle);
+        });
+        $response->headers->set('Content-Type', 'application/vnd.ms-excel; charset=UTF-8');
+        $response->headers->set('Content-Disposition', 'attachment; filename="template_import_produits.xls"');
+        return $response;
+    }
+
+    // ══════════════════════════════════════════════════════════════════
     //  CRÉATION DE CATÉGORIE à la volée (AJAX depuis SweetAlert)
     // ══════════════════════════════════════════════════════════════════
 
@@ -396,7 +494,6 @@ class ProduitController extends AbstractController
     //  HELPERS IMPORT
     // ══════════════════════════════════════════════════════════════════
 
-    /** Retourne un tableau indexé par nom_lowercase => entité Categorie */
     private function chargerCategoriesIndexees(EntityManagerInterface $em): array
     {
         $result = [];
@@ -406,10 +503,6 @@ class ProduitController extends AbstractController
         return $result;
     }
 
-    /**
-     * Retourne la liste (unique, en valeur) des noms de catégories présents
-     * dans les lignes d'import mais absents de la base.
-     */
     private function detecterCategoriesInconnues(array $rows, array $categoriesConnues): array
     {
         $inconnues = [];
@@ -422,9 +515,6 @@ class ProduitController extends AbstractController
         return $inconnues;
     }
 
-    /**
-     * Valide une URL (syntaxe + accessibilité HEAD rapide).
-     */
     private function isUrlValide(string $url): bool
     {
         if (!filter_var($url, FILTER_VALIDATE_URL)) {
@@ -443,45 +533,36 @@ class ProduitController extends AbstractController
         return (bool) preg_match('/^HTTP\/\d\.?\d?\s+[23]\d\d/', $headers[0]);
     }
 
-    /**
-     * Normalise les caractéristiques en liste séparée par \n.
-     *
-     * Entrées acceptées :
-     *   - Tableau PHP/JSON : ["item1", "item2"]  →  "item1\nitem2"
-     *   - Chaîne multi-lignes (cellule CSV/Excel avec \n dans la cellule)
-     *   - Chaîne simple → une seule caractéristique
-     *
-     * ⚠️  La virgule n'est JAMAIS un séparateur de caractéristiques.
-     */
-    private function normaliserCaracteristiques(mixed $value): ?string
+    private function normaliserCaracteristiques(mixed $value, bool $autoFix = false): ?string
     {
         if ($value === null || $value === '') {
             return null;
         }
 
-        // Tableau (JSON ou PhpSpreadsheet) → jointure par saut de ligne
         if (is_array($value)) {
             $items = array_map('trim', $value);
             $items = array_filter($items, fn($i) => $i !== '');
             return implode("\n", $items) ?: null;
         }
 
-        // Chaîne → normalise les retours chariot Windows
         $str = str_replace(["\r\n", "\r"], "\n", (string) $value);
         $str = trim($str);
-
         if ($str === '') {
             return null;
         }
 
-        // Nettoie chaque ligne individuellement
-        $lines = array_map('trim', explode("\n", $str));
+        if ($autoFix && !str_contains($str, "\n") && preg_match('/[,;]/', $str)) {
+            $lines = preg_split('/[,;]+/', $str);
+        } else {
+            $lines = explode("\n", $str);
+        }
+
+        $lines = array_map('trim', $lines);
         $lines = array_filter($lines, fn($l) => $l !== '');
 
         return implode("\n", $lines) ?: null;
     }
 
-    /** Crée un HistoriqueImportation en statut ECHEC immédiat */
     private function creerHistoriqueEchec(
         EntityManagerInterface $em,
         string $nomFichier,
@@ -508,24 +589,32 @@ class ProduitController extends AbstractController
     //  PARSEURS
     // ══════════════════════════════════════════════════════════════════
 
-    /**
-     * JSON attendu :
-     * {
-     *   "produits": [
-     *     {
-     *       "sku": "REF-001",
-     *       "nom": "Produit A",
-     *       "categorie": "Électronique",
-     *       "statut": "actif",
-     *       "caracteristiques": ["Couleur: Rouge", "Poids: 1 kg"],
-     *       "description_originale": "...",
-     *       "description_generee": "...",
-     *       "image_url": "https://..."
-     *     }
-     *   ]
-     * }
-     * ou directement un tableau [...].
-     */
+    private function detecterCaracteristiquesIncompatibles(array $rows): array
+    {
+        $problemes = [];
+        foreach ($rows as $index => $row) {
+            $valeur = $row['caracteristiques'] ?? $row['caractéristiques'] ?? null;
+
+            if ($valeur === null || is_array($valeur)) {
+                continue;
+            }
+
+            $str = trim(str_replace(["\r\n", "\r"], "\n", (string) $valeur));
+            if ($str === '' || str_contains($str, "\n")) {
+                continue;
+            }
+
+            if (preg_match('/[,;]/', $str)) {
+                $problemes[] = [
+                    'ligne'  => $index + 1,
+                    'sku'    => trim($row['sku'] ?? '—'),
+                    'valeur' => $str,
+                ];
+            }
+        }
+        return $problemes;
+    }
+
     private function parseJson(string $path): array
     {
         $content = file_get_contents($path);
@@ -551,15 +640,6 @@ class ProduitController extends AbstractController
         return $rows;
     }
 
-    /**
-     * CSV attendu (séparateur ; ou , auto-détecté, BOM UTF-8 ignoré).
-     *
-     * Colonnes : sku ; nom ; categorie ; statut ; caracteristiques ;
-     *            description_originale ; description_generee ; image_url
-     *
-     * Les caractéristiques sont dans UNE cellule, séparées par des retours
-     * à la ligne (Alt+Entrée) — jamais par des virgules.
-     */
     private function parseCsv(string $path): array
     {
         $handle = fopen($path, 'r');
@@ -567,13 +647,11 @@ class ProduitController extends AbstractController
             throw new \RuntimeException('Impossible d\'ouvrir le fichier CSV.');
         }
 
-        // Skip BOM UTF-8
         $bom = fread($handle, 3);
         if ($bom !== "\xEF\xBB\xBF") {
             rewind($handle);
         }
 
-        // Détection auto du séparateur
         $firstLine = fgets($handle);
         rewind($handle);
         if ($bom === "\xEF\xBB\xBF") {
@@ -581,7 +659,6 @@ class ProduitController extends AbstractController
         }
         $sep = substr_count($firstLine, ';') >= substr_count($firstLine, ',') ? ';' : ',';
 
-        // En-têtes
         $headers = fgetcsv($handle, 0, $sep);
         if (!$headers) {
             fclose($handle);
@@ -608,11 +685,6 @@ class ProduitController extends AbstractController
         return $rows;
     }
 
-    /**
-     * Excel — tente d'abord PhpSpreadsheet (si installé),
-     * sinon lecture ZIP/XML native pour .xlsx,
-     * sinon fallback TSV.
-     */
     private function parseExcel(string $path): array
     {
         if (class_exists(\PhpOffice\PhpSpreadsheet\IOFactory::class)) {
@@ -667,7 +739,6 @@ class ProduitController extends AbstractController
             }
         }
 
-        // Fallback TSV
         $content = file_get_contents($path);
         $content = preg_replace('/^\xEF\xBB\xBF/', '', $content);
         if (str_contains($content, "\t")) {
@@ -748,9 +819,6 @@ class ProduitController extends AbstractController
         return $index - 1;
     }
 
-    /**
-     * Normalise un en-tête de colonne.
-     */
     private function normalizeHeader(string $header): string
     {
         $h = mb_strtolower(trim($header));
@@ -948,56 +1016,37 @@ HTML;
     //  CRUD STANDARD
     // ══════════════════════════════════════════════════════════════════
 
- #[Route('/new', name: 'app_produit_new', methods: ['GET', 'POST'])]
-public function new(Request $request, EntityManagerInterface $em, GeminiService $geminiService): Response
-{
-    $this->denyAccessUnlessGranted('ROLE_ADMIN');
-    $produit = new Produit();
-    $produit->setUtilisateur($this->getUser());
-    $form = $this->createForm(ProduitType::class, $produit);
-    $form->handleRequest($request);
-
-    if ($form->isSubmitted() && $form->isValid()) {
-
-        try {
-            $resultat = $geminiService->genererContenuIA($produit);
-            $produit->setDescriptionGeneree($resultat['description']);
-            if ($resultat['imageUrl'] !== null) {
-                $produit->setImageUrl($resultat['imageUrl']);
-            }
-        } catch (\Throwable $e) {
-            $this->addFlash('error', 'La génération IA a échoué (produit tout de même enregistré) : ' . $e->getMessage());
-        }
-
-        $em->persist($produit);
-        $em->flush();
-        $this->addFlash('success', 'Le produit a été créé avec succès.');
-        return $this->redirectToRoute('app_produit_index');
-    }
-
-    if ($form->isSubmitted() && !$form->isValid()) {
-        $errors = [];
-        foreach ($form->getErrors(true) as $error) {
-            $errors[] = $error->getMessage();
-        }
-        $this->addFlash('error', implode('|', $errors));
-    }
-
-    return $this->render('produit/new.html.twig', ['form' => $form->createView()]);
-}
-
-    #[Route('/{id}/edit', name: 'app_produit_edit', methods: ['GET', 'POST'])]
-    public function edit(Request $request, Produit $produit, EntityManagerInterface $em): Response
+    #[Route('/new', name: 'app_produit_new', methods: ['GET', 'POST'])]
+    public function new(Request $request, EntityManagerInterface $em, AiProviderManager $aiProviderManager): Response
     {
         $this->denyAccessUnlessGranted('ROLE_ADMIN');
+        $produit = new Produit();
+        $produit->setUtilisateur($this->getUser());
         $form = $this->createForm(ProduitType::class, $produit);
         $form->handleRequest($request);
+
         if ($form->isSubmitted() && $form->isValid()) {
-            $produit->setDateModification(new \DateTime());
+
+            $aiProvider = $request->getSession()->get('ai_provider', 'gemini');
+            try {
+                $resultat = $aiProviderManager->genererContenuIA($produit, $aiProvider);
+                $produit->setDescriptionGeneree($resultat['description']);
+                if ($resultat['imageUrl'] !== null) {
+                    $produit->setImageUrl($resultat['imageUrl']);
+                }
+                if ($resultat['fallback']) {
+                    $this->addFlash('success', "Produit créé (génération IA via {$resultat['provider']}, bascule automatique).");
+                }
+            } catch (\Throwable $e) {
+                $this->addFlash('error', 'La génération IA a échoué (produit tout de même enregistré) : ' . $e->getMessage());
+            }
+
+            $em->persist($produit);
             $em->flush();
-            $this->addFlash('success', 'Le produit a été modifié avec succès.');
+            $this->addFlash('success', 'Le produit a été créé avec succès.');
             return $this->redirectToRoute('app_produit_index');
         }
+
         if ($form->isSubmitted() && !$form->isValid()) {
             $errors = [];
             foreach ($form->getErrors(true) as $error) {
@@ -1005,6 +1054,49 @@ public function new(Request $request, EntityManagerInterface $em, GeminiService 
             }
             $this->addFlash('error', implode('|', $errors));
         }
+
+        return $this->render('produit/new.html.twig', ['form' => $form->createView()]);
+    }
+
+    #[Route('/{id}/edit', name: 'app_produit_edit', methods: ['GET', 'POST'])]
+    public function edit(Request $request, Produit $produit, EntityManagerInterface $em, AiProviderManager $aiProviderManager): Response
+    {
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
+        $form = $this->createForm(ProduitType::class, $produit);
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+
+            if ($request->request->get('regenererIA') === '1') {
+                $aiProvider = $request->getSession()->get('ai_provider', 'gemini');
+                try {
+                    $resultat = $aiProviderManager->genererContenuIA($produit, $aiProvider);
+                    $produit->setDescriptionGeneree($resultat['description']);
+                    if ($resultat['imageUrl'] !== null) {
+                        $produit->setImageUrl($resultat['imageUrl']);
+                    }
+                    if ($resultat['fallback']) {
+                        $this->addFlash('success', "Régénéré via {$resultat['provider']} (bascule automatique).");
+                    }
+                } catch (\Throwable $e) {
+                    $this->addFlash('error', 'La génération IA a échoué (modifications tout de même enregistrées) : ' . $e->getMessage());
+                }
+            }
+
+            $produit->setDateModification(new \DateTime());
+            $em->flush();
+            $this->addFlash('success', 'Le produit a été modifié avec succès.');
+            return $this->redirectToRoute('app_produit_index');
+        }
+
+        if ($form->isSubmitted() && !$form->isValid()) {
+            $errors = [];
+            foreach ($form->getErrors(true) as $error) {
+                $errors[] = $error->getMessage();
+            }
+            $this->addFlash('error', implode('|', $errors));
+        }
+
         return $this->render('produit/edit.html.twig', ['form' => $form->createView(), 'produit' => $produit]);
     }
 

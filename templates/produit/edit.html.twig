@@ -3,6 +3,7 @@
 {% block title %}NOVAWIN - Modifier le Produit{% endblock %}
 {% block page_title %}Modifier le Produit{% endblock %}
 {% block page_subtitle %}Modifiez les informations de {{ produit.nom }}{% endblock %}
+
 {% block body %}
 <div class="container-fluid p-0">
 
@@ -57,31 +58,115 @@
 
                 <div class="col-12">
                     {{ form_label(form.caracteristiques, null, {'label_attr': {'class': 'form-label small fw-semibold', 'style': 'color:var(--text-secondary);'}}) }}
-                    {{ form_widget(form.caracteristiques, {'attr': {'class': 'form-control',
+                    {{ form_widget(form.caracteristiques, {'attr': {'class': 'form-control', 'rows': '3',
                         'style': 'background:var(--bg-body);border-color:var(--border-color);color:var(--text-primary);border-radius:10px;padding:0.6rem 1rem;'}}) }}
                 </div>
 
                 <div class="col-md-6">
                     {{ form_label(form.descriptionOriginale, null, {'label_attr': {'class': 'form-label small fw-semibold', 'style': 'color:var(--text-secondary);'}}) }}
-                    {{ form_widget(form.descriptionOriginale, {'attr': {'class': 'form-control',
+                    {{ form_widget(form.descriptionOriginale, {'attr': {'class': 'form-control', 'rows': '4',
                         'style': 'background:var(--bg-body);border-color:var(--border-color);color:var(--text-primary);border-radius:10px;padding:0.6rem 1rem;'}}) }}
                 </div>
 
                 <div class="col-md-6">
                     {{ form_label(form.descriptionGeneree, null, {'label_attr': {'class': 'form-label small fw-semibold', 'style': 'color:var(--text-secondary);'}}) }}
-                    {{ form_widget(form.descriptionGeneree, {'attr': {'class': 'form-control',
+                    {{ form_widget(form.descriptionGeneree, {'attr': {'class': 'form-control', 'rows': '4',
                         'style': 'background:var(--bg-body);border-color:var(--border-color);color:var(--text-primary);border-radius:10px;padding:0.6rem 1rem;'}}) }}
                 </div>
 
+                <!-- SECTION IA AMÉLIORÉE -->
+                <div class="col-12 mt-3">
+                    <div class="ia-toggle-card p-4 rounded-4"
+                         style="background:linear-gradient(135deg, rgba(0,255,163,0.08) 0%, rgba(0,255,163,0.02) 100%);
+                                border:2px solid rgba(0,255,163,0.2);
+                                transition: all 0.3s ease;
+                                position:relative;
+                                overflow:hidden;">
+
+                        <!-- Icône décorative en arrière-plan -->
+                        <div style="position:absolute;right:-20px;top:-20px;font-size:80px;opacity:0.05;pointer-events:none;">
+                            <i class="fas fa-robot"></i>
+                        </div>
+
+                        <div class="d-flex align-items-center gap-4 flex-wrap">
+                            <!-- Icône IA avec animation -->
+                            <div style="display:flex;align-items:center;justify-content:center;width:52px;height:52px;
+                                        background:linear-gradient(135deg, var(--emerald), #00d4a0);
+                                        border-radius:50%;flex-shrink:0;">
+                                <i class="fas fa-wand-magic-sparkles" style="color:#0b1329;font-size:22px;"></i>
+                            </div>
+
+                            <div style="flex:1;min-width:200px;">
+                                <div style="font-weight:600;font-size:1.05rem;color:var(--text-primary);">
+                                    Génération IA de la description
+                                </div>
+                                <div style="font-size:0.85rem;color:var(--text-secondary);margin-top:4px;">
+                                    <i class="fas fa-robot me-1"></i>
+                                    Activez pour régénérer automatiquement la description (et l'image si besoin) avec l'IA
+                                </div>
+                            </div>
+
+                            <!-- Toggle Switch moderne -->
+                            <div style="display:flex;align-items:center;gap:14px;flex-shrink:0;">
+                                <span style="font-size:0.85rem;font-weight:500;color:var(--text-secondary);">
+                                    <i class="fas fa-edit me-1"></i> Manuel
+                                </span>
+
+                                <label class="ia-toggle-switch" style="position:relative;display:inline-block;width:60px;height:32px;cursor:pointer;">
+                                    <input type="checkbox" name="regenererIA" value="1" id="regenererIA"
+                                           style="opacity:0;width:0;height:0;position:absolute;">
+                                    <span class="slider" style="position:absolute;cursor:pointer;inset:0;
+                                               background-color:#cbd5e1;transition:all 0.3s ease;border-radius:34px;
+                                               box-shadow:inset 0 2px 4px rgba(0,0,0,0.1);">
+                                        <span class="slider-dot" style="position:absolute;height:26px;width:26px;
+                                                   left:3px;bottom:3px;background-color:white;
+                                                   transition:all 0.3s ease;border-radius:50%;
+                                                   box-shadow:0 2px 4px rgba(0,0,0,0.2);">
+                                        </span>
+                                    </span>
+                                </label>
+
+                                <span style="font-size:0.85rem;font-weight:500;color:var(--emerald);">
+                                    <i class="fas fa-robot me-1"></i> IA
+                                    <span style="display:inline-block;background:var(--emerald);color:#0b1329;
+                                                font-size:0.65rem;font-weight:700;padding:2px 8px;border-radius:50px;
+                                                margin-left:4px;text-transform:uppercase;letter-spacing:0.5px;">
+                                        Actif
+                                    </span>
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Badge d'information supplémentaire -->
+                        <div class="mt-3 pt-3" style="border-top:1px solid rgba(0,255,163,0.15);">
+                            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                                <span style="font-size:0.75rem;background:rgba(0,255,163,0.12);
+                                             color:var(--emerald);padding:4px 12px;border-radius:50px;display:inline-flex;
+                                             align-items:center;gap:6px;">
+                                    <i class="fas fa-check-circle" style="font-size:10px;"></i>
+                                    Utilise les données actuelles
+                                </span>
+                                <span style="font-size:0.75rem;color:var(--text-secondary);display:inline-flex;align-items:center;gap:6px;">
+                                    <i class="fas fa-info-circle"></i>
+                                    Laissez décoché pour conserver vos modifications manuelles
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="mt-4 d-flex gap-3">
                 <button type="submit" class="btn px-4 py-2 fw-semibold"
-                        style="background:var(--emerald);color:#0b1329;border:none;border-radius:12px;">
-<i class="fas fa-save me-2"></i> Enregistrer les modifications
+                        style="background:var(--emerald);color:#0b1329;border:none;border-radius:12px;transition:all 0.2s ease;"
+                        onmouseover="this.style.transform='scale(1.02)';this.style.boxShadow='0 4px 15px rgba(0,255,163,0.3)';"
+                        onmouseout="this.style.transform='scale(1)';this.style.boxShadow='none';">
+                    <i class="fas fa-save me-2"></i> Enregistrer les modifications
                 </button>
                 <a href="{{ path('app_produit_index') }}" class="btn px-4 py-2 fw-semibold"
-                   style="background:transparent;color:var(--text-secondary);border:1.5px solid var(--border-color);border-radius:12px;">
+                   style="background:transparent;color:var(--text-secondary);border:1.5px solid var(--border-color);border-radius:12px;transition:all 0.2s ease;"
+                   onmouseover="this.style.background='rgba(220,53,69,0.05)';this.style.borderColor='#dc3545';this.style.color='#dc3545';"
+                   onmouseout="this.style.background='transparent';this.style.borderColor='var(--border-color)';this.style.color='var(--text-secondary)';">
                     <i class="fas fa-times me-2"></i> Annuler
                 </a>
             </div>
@@ -94,11 +179,59 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const form      = document.getElementById('produitForm');
-    const skuInput  = document.getElementById('skuInput')  || document.querySelector('input[name$="[sku]"]');
-    const nomInput  = document.getElementById('nomInput')  || document.querySelector('input[name$="[nom]"]');
-    const catInput  = document.getElementById('categorieInput') || document.querySelector('select[name$="[categorie]"]');
+    const form = document.getElementById('produitForm');
+    const skuInput = document.getElementById('skuInput') || document.querySelector('input[name$="[sku]"]');
+    const nomInput = document.getElementById('nomInput') || document.querySelector('input[name$="[nom]"]');
+    const catInput = document.getElementById('categorieInput') || document.querySelector('select[name$="[categorie]"]');
 
+    // Gestion du toggle IA avec animation
+    const iaToggle = document.getElementById('regenererIA');
+    const iaCard = document.querySelector('.ia-toggle-card');
+    const iaSlider = document.querySelector('.slider');
+    const iaDot = document.querySelector('.slider-dot');
+    const activeBadge = document.querySelector('.ia-toggle-switch + span + span');
+
+    if (iaToggle && iaSlider) {
+        // Mettre à jour l'état initial
+        function updateToggle() {
+            if (iaToggle.checked) {
+                iaSlider.style.backgroundColor = 'var(--emerald)';
+                iaDot.style.transform = 'translateX(28px)';
+                iaCard.style.borderColor = 'var(--emerald)';
+                iaCard.style.boxShadow = '0 0 30px rgba(0,255,163,0.15)';
+                if (activeBadge) {
+                    activeBadge.style.opacity = '1';
+                }
+            } else {
+                iaSlider.style.backgroundColor = '#cbd5e1';
+                iaDot.style.transform = 'translateX(0px)';
+                iaCard.style.borderColor = 'rgba(0,255,163,0.2)';
+                iaCard.style.boxShadow = 'none';
+                if (activeBadge) {
+                    activeBadge.style.opacity = '0.5';
+                }
+            }
+        }
+
+        updateToggle();
+
+        iaToggle.addEventListener('change', function() {
+            updateToggle();
+
+            // Animation de pulsation
+            iaCard.style.transition = 'all 0.3s ease';
+            if (this.checked) {
+                iaCard.style.background = 'linear-gradient(135deg, rgba(0,255,163,0.12) 0%, rgba(0,255,163,0.04) 100%)';
+                setTimeout(() => {
+                    iaCard.style.background = 'linear-gradient(135deg, rgba(0,255,163,0.08) 0%, rgba(0,255,163,0.02) 100%)';
+                }, 300);
+            } else {
+                iaCard.style.background = 'linear-gradient(135deg, rgba(0,255,163,0.08) 0%, rgba(0,255,163,0.02) 100%)';
+            }
+        });
+    }
+
+    // Gestion des erreurs
     function buildErrorList(errors) {
         return errors.map(e => `<div style="padding:4px 0;display:flex;align-items:center;gap:8px;">
             <i class="fas fa-times-circle" style="color:#dc3545;font-size:14px;"></i>
@@ -127,6 +260,7 @@ document.addEventListener('DOMContentLoaded', function () {
         swalError('⚠️ Erreur de validation', buildErrorList(errors))
             .then(() => { if (skuInput) { skuInput.focus(); skuInput.select(); } });
     });
+
     document.querySelectorAll('.alert-success').forEach(alert => {
         const msg = alert.innerText.trim(); alert.style.display = 'none';
         if (!msg) return;
@@ -136,6 +270,7 @@ document.addEventListener('DOMContentLoaded', function () {
             customClass: { popup: 'rounded-4' } });
     });
 
+    // Validation du formulaire
     function validateForm() {
         const errors = [];
         const sku = skuInput ? skuInput.value.trim() : '';
@@ -163,11 +298,11 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Feedback visuel
+    // Feedback visuel des champs
     function styleInput(input, valid) {
         if (!input) return;
         input.style.borderColor = valid ? '#28a745' : '#dc3545';
-        input.style.boxShadow   = valid
+        input.style.boxShadow = valid
             ? '0 0 0 0.2rem rgba(40,167,69,0.15)'
             : '0 0 0 0.2rem rgba(220,53,69,0.15)';
     }
@@ -197,10 +332,21 @@ document.addEventListener('DOMContentLoaded', function () {
         border-color: var(--emerald) !important;
         box-shadow: 0 0 0 0.2rem rgba(0,255,163,0.15) !important;
     }
+
     .swal2-popup { border-radius:16px !important; border:1px solid var(--border-color) !important; background:var(--card-bg-light) !important; }
     .swal2-title { color:var(--text-primary) !important; }
     .swal2-html-container { color:var(--text-secondary) !important; }
     .swal2-confirm { border:none !important; border-radius:50px !important; font-weight:600 !important; padding:0.6rem 1.5rem !important; }
     .alert { display:none !important; }
+
+    /* Animation de la carte IA */
+    .ia-toggle-card {
+        transition: all 0.3s ease;
+    }
+
+    .ia-toggle-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 30px rgba(0,255,163,0.1);
+    }
 </style>
 {% endblock %}

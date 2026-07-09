@@ -1,91 +1,11 @@
 {
   "produits": [
+
     {
-      "sku": "REF-001",
-      "nom": "Casque Audio Pro X",
-      "categorie": "Audio",
-      "statut": "actif",
-      "caracteristiques": [
-        "Type: Circum-auriculaire",
-        "Connectivité: Bluetooth 5.0",
-        "Autonomie: 30 heures",
-        "Réduction de bruit: Active",
-        "Poids: 250g"
-      ],
-      "description_originale": "Casque audio professionnel avec réduction de bruit active. Idéal pour le télétravail et les déplacements.",
-      "description_generee": "Casque Pro X - Son haute fidélité avec ANC, batterie longue durée et confort optimal.",
-      "image_url": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500"
-    },
-    {
-      "sku": "REF-002",
-      "nom": "Enceinte Portable Boom",
-      "categorie": "Audio",
-      "statut": "actif",
-      "caracteristiques": [
-        "Puissance: 20W RMS",
-        "Batterie: 12 heures",
-        "Étanchéité: IPX7",
-        "Connectivité: Bluetooth 5.0",
-        "Poids: 500g"
-      ],
-      "description_originale": "Enceinte portable résistante à l'eau avec son puissant et clair. Parfaite pour les voyages.",
-      "description_generee": "Enceinte Boom - Son immersif, robuste et étanche pour toutes vos aventures.",
-      "image_url": "https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=500"
-    },
-    {
-      "sku": "REF-003",
-      "nom": "Souris Gaming Xtreme",
-      "categorie": "Périphériques",
-      "statut": "actif",
-      "caracteristiques": [
-        "DPI: 16000",
-        "Taux de rafraîchissement: 1000 Hz",
-        "Boutons: 8 programmables",
-        "Éclairage: RGB",
-        "Poids: 65g"
-      ],
-      "description_originale": "Souris gaming ultra-légère avec capteur optique haute précision. Idéale pour les compétitions.",
-      "description_generee": "Souris Xtreme - Performance maximale avec capteur 16K DPI et design ergonomique.",
-      "image_url": "https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=500"
-    },
-    {
-      "sku": "REF-004",
-      "nom": "Clavier Mécanique RGB",
-      "categorie": "Périphériques",
-      "statut": "rupture",
-      "caracteristiques": [
-        "Type: Mécanique",
-        "Switch: Cherry MX Red",
-        "Rétroéclairage: RGB",
-        "N-Key Rollover: Oui",
-        "Poids: 950g"
-      ],
-      "description_originale": "Clavier mécanique gaming avec switches Cherry MX Red, rétroéclairage RGB personnalisable.",
-      "description_generee": "Clavier RGB - Précision et réactivité pour les gamers exigeants.",
-      "image_url": "https://images.unsplash.com/photo-1595225476474-87563907a212?w=500"
-    },
-    {
-      "sku": "REF-005",
-      "nom": "Smartphone Elite 5G",
-      "categorie": "Smartphones",
-      "statut": "actif",
-      "caracteristiques": [
-        "Écran: 6.7\" AMOLED 120Hz",
-        "Processeur: Octa-core 5G",
-        "RAM: 8GB",
-        "Stockage: 256GB",
-        "Appareil photo: 108MP",
-        "Batterie: 5000mAh"
-      ],
-      "description_originale": "Smartphone haut de gamme avec écran 120Hz, appareil photo 108MP et connectivité 5G.",
-      "description_generee": "Smartphone Elite - Puissance et élégance avec le meilleur de la technologie mobile.",
-      "image_url": "https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?w=500"
-    },
-    {
-      "sku": "REF-006",
+      "sku": "REF11-006",
       "nom": "Chargeur Rapide 65W",
       "categorie": "Accessoires",
-      "statut": "inactif",
+      "statut": "actif",
       "caracteristiques": [
         "Puissance: 65W",
         "Ports: USB-C + USB-A",
@@ -93,9 +13,7 @@
         "Protection: Surtension",
         "Poids: 150g"
       ],
-      "description_originale": "Chargeur GaN 65W avec deux ports pour charger simultanément smartphone et ordinateur.",
-      "description_generee": "Chargeur 65W - Charge rapide et compact pour tous vos appareils.",
-      "image_url": "https://images.unsplash.com/photo-1622443124563-3e684c77a2db?w=500"
+      "image_url": "https://www.tunisianet.com.tn/90413-large/chargeur-2en1-micro-usb-pour-smartphone-2a-blanc.jpg"
     }
   ]
 }
