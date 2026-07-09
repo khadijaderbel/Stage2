@@ -20,15 +20,7 @@ class HistoriqueImportationController extends AbstractController
         $this->denyAccessUnlessGranted('ROLE_ADMIN');
 
         $historiques = $repo->findAllOrderedByDate(100);
-
-        // Statistiques globales
-        $stats = [
-            'total'    => count($historiques),
-            'succes'   => count(array_filter($historiques, fn($h) => $h->getStatut() === HistoriqueImportation::STATUT_SUCCES)),
-            'partiel'  => count(array_filter($historiques, fn($h) => $h->getStatut() === HistoriqueImportation::STATUT_PARTIEL)),
-            'echec'    => count(array_filter($historiques, fn($h) => $h->getStatut() === HistoriqueImportation::STATUT_ECHEC)),
-            'produits' => array_sum(array_map(fn($h) => $h->getNombreImportes(), $historiques)),
-        ];
+        $stats = $repo->getStats();
 
         return $this->render('historique_importation/index.html.twig', [
             'historiques' => $historiques,

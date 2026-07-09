@@ -7,13 +7,11 @@
       "categorie": "Accessoires",
       "statut": "actif",
       "caracteristiques": [
-        "Puissance: 65W",
-        "Ports: USB-C + USB-A",
+
         "Charge rapide: PD 3.0",
         "Protection: Surtension",
         "Poids: 150g"
-      ],
-      "image_url": "https://www.tunisianet.com.tn/90413-large/chargeur-2en1-micro-usb-pour-smartphone-2a-blanc.jpg"
+      ]
     }
   ]
 }

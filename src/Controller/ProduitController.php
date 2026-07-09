@@ -56,6 +56,10 @@ class ProduitController extends AbstractController
         ]);
     }
 
+    // ══════════════════════════════════════════════════════════════════
+    //  IMPORT
+    // ══════════════════════════════════════════════════════════════════
+
     #[Route('/import', name: 'app_produit_import', methods: ['POST'])]
     public function import(Request $request, EntityManagerInterface $em, AiProviderManager $aiProviderManager): JsonResponse
     {
@@ -99,8 +103,9 @@ class ProduitController extends AbstractController
                 'message' => 'Le fichier est vide ou ne contient aucune ligne valide.',
             ], 422);
         }
-        $fixFormat        = (bool) $request->request->get('fixFormat', false);
-        $problemesFormat  = $this->detecterCaracteristiquesIncompatibles($rows);
+
+        $fixFormat = (bool) $request->request->get('fixFormat', false);
+        $problemesFormat = $this->detecterCaracteristiquesIncompatibles($rows);
 
         if (!empty($problemesFormat) && !$fixFormat) {
             return new JsonResponse([
@@ -111,19 +116,19 @@ class ProduitController extends AbstractController
                     : count($problemesFormat) . ' lignes utilisent des virgules/points-virgules dans les caractéristiques (non autorisé).',
             ]);
         }
+
         // ── 2. Détecter les catégories inconnues ─────────────────────
         $categoriesConnues   = $this->chargerCategoriesIndexees($em);
         $categoriesInconnues = $this->detecterCategoriesInconnues($rows, $categoriesConnues);
 
         $skipCategories = (bool) $request->request->get('skipCategories', false);
 
-        // Si catégories inconnues ET l'utilisateur n'a pas encore choisi → on demande
         if (!empty($categoriesInconnues) && !$skipCategories) {
             return new JsonResponse([
                 'action'              => 'categories_manquantes',
                 'categoriesInconnues' => array_values($categoriesInconnues),
                 'message'             => count($categoriesInconnues) === 1
-                    ? "La catégorie « {$categoriesInconnues[array_key_first($categoriesInconnues)]} » n'existe pas dans le système."
+                    ? "La catégorie « " . reset($categoriesInconnues) . " » n'existe pas dans le système."
                     : count($categoriesInconnues) . ' catégorie(s) inconnue(s) détectée(s) dans le fichier.',
             ]);
         }
@@ -149,7 +154,6 @@ class ProduitController extends AbstractController
         $journalErreurs        = [];
         $journalAvertissements = [];
 
-        // Rechargement catégories (au cas où des créations auraient eu lieu côté front)
         $categoriesConnues = $this->chargerCategoriesIndexees($em);
 
         foreach ($rows as $lineIndex => $row) {
@@ -173,13 +177,13 @@ class ProduitController extends AbstractController
                 $journalErreurs[] = [
                     'ligne'  => $lineNum,
                     'sku'    => $sku,
-                    'erreur' => "Catégorie « {$catNom} » introuvable — produit ignoré (catégorie inexistante).",
+                    'erreur' => "Catégorie « {$catNom} » introuvable — produit ignoré.",
                 ];
                 $compteurs['erreurs']++;
                 continue;
             }
 
-            // ── Vérification URL image (non bloquante) ────────────────
+            // ── Vérification URL image (NON BLOQUANTE - simple avertissement) ──
             $imageUrl = trim($row['image_url'] ?? '');
             if ($imageUrl !== '' && !$this->isUrlValide($imageUrl)) {
                 $journalAvertissements[] = [
@@ -190,7 +194,7 @@ class ProduitController extends AbstractController
                 $imageUrl = '';
             }
 
-            // ── Description originale vide (non bloquante) ────────────
+            // ── Description originale vide (NON BLOQUANTE) ────────────
             $descOriginale = trim($row['description_originale'] ?? $row['description'] ?? '');
             if ($descOriginale === '') {
                 $journalAvertissements[] = [
@@ -225,17 +229,7 @@ class ProduitController extends AbstractController
 
             try {
                 if ($produitExistant) {
-                    // ── Produit déjà en base ──────────────────────────
-                    if ($produitExistant->getStatut() === $statutImport) {
-                        $journalAvertissements[] = [
-                            'ligne'         => $lineNum,
-                            'sku'           => $sku,
-                            'avertissement' => "Produit déjà existant avec le statut « {$statutImport} » — non modifié.",
-                        ];
-                        $compteurs['deja_existe']++;
-                        continue;
-                    }
-
+                    // ── Produit déjà en base : ON MODIFIE TOUT ────────
                     $ancienStatut = $produitExistant->getStatut();
                     $produitExistant->setNom($nom);
                     $produitExistant->setStatut($statutImport);
@@ -357,19 +351,32 @@ class ProduitController extends AbstractController
 
         // Statut final de l'historique
         if ($totalImportes === 0 && $totalErreurs === 0 && $compteurs['deja_existe'] > 0) {
+            // Tous les produits existaient déjà → SUCCES
             $historique->setStatut(HistoriqueImportation::STATUT_SUCCES);
-            $resume = "Tous les produits existaient déjà avec le même statut — aucune modification.";
+            $resume = "Tous les produits existaient déjà — aucune modification.";
             $actionResult = 'deja_existe';
+
         } elseif ($totalImportes === 0 && $totalErreurs > 0) {
+            // Aucun produit importé, uniquement des erreurs → ECHEC
             $historique->setStatut(HistoriqueImportation::STATUT_ECHEC);
             $resume = "Échec total : aucun produit importé, {$totalErreurs} erreur(s).";
             $actionResult = 'echec';
-        } elseif ($totalErreurs > 0 || $compteurs['deja_existe'] > 0 || !empty($journalAvertissements)) {
+
+        } elseif ($totalErreurs > 0) {
+            // PARTIEL : il y a des erreurs (produits ignorés) ET des produits importés ou mis à jour
             $historique->setStatut(HistoriqueImportation::STATUT_PARTIEL);
             $resume = "{$compteurs['crees']} créé(s), {$compteurs['mis_a_jour']} mis à jour, "
                     . "{$compteurs['deja_existe']} déjà existant(s), {$totalErreurs} erreur(s).";
             $actionResult = 'partiel';
+
+        } elseif (!empty($journalAvertissements)) {
+            // SUCCES AVEC AVERTISSEMENTS (non bloquants) → NOUVEAU STATUT !
+            $historique->setStatut(HistoriqueImportation::STATUT_SUCCES_AVEC_WARNINGS);
+            $resume = "{$compteurs['crees']} produit(s) créé(s) avec succès (avec avertissements non bloquants).";
+            $actionResult = 'succes_avec_warnings';
+
         } else {
+            // SUCCES TOTAL : aucun avertissement, aucune erreur
             $historique->setStatut(HistoriqueImportation::STATUT_SUCCES);
             $resume = "{$compteurs['crees']} produit(s) créé(s) avec succès.";
             $actionResult = 'succes';
@@ -380,18 +387,18 @@ class ProduitController extends AbstractController
 
         // ── 7. Réponse JSON ───────────────────────────────────────────
         return new JsonResponse([
-            'action'       => $actionResult,
-            'message'      => $resume,
-            'compteurs'    => $compteurs,
+            'action'         => $actionResult,
+            'message'        => $resume,
+            'compteurs'      => $compteurs,
             'avertissements' => $journalAvertissements,
-            'erreurs'      => $journalErreurs,
-            'totalImportes'=> $totalImportes,
-            'totalErreurs' => $totalErreurs,
+            'erreurs'        => $journalErreurs,
+            'totalImportes'  => $totalImportes,
+            'totalErreurs'   => $totalErreurs,
         ]);
     }
 
     // ══════════════════════════════════════════════════════════════════
-    //  TEMPLATE D'IMPORT (téléchargeable, prêt à remplir)
+    //  TEMPLATE D'IMPORT (téléchargeable)
     // ══════════════════════════════════════════════════════════════════
 
     #[Route('/import/template', name: 'app_produit_import_template', methods: ['GET'])]
@@ -401,25 +408,21 @@ class ProduitController extends AbstractController
 
         $format = $request->query->get('format', 'csv');
 
-        // Squelette vide : uniquement les en-têtes, aucune ligne d'exemple.
-        // "caracteristiques" est volontairement placée en dernière colonne.
-        $headers = ['sku', 'nom', 'categorie', 'statut', 'description_originale', 'image_url', 'caracteristiques'];
-        $exemples = [];
+        // En-têtes avec 2 lignes d'exemple
+        $headers = ['sku', 'nom', 'categorie', 'statut', 'caracteristiques', 'description_originale', 'image_url'];
 
         return $format === 'excel'
-            ? $this->genererTemplateExcel($headers, $exemples)
-            : $this->genererTemplateCsv($headers, $exemples);
+            ? $this->genererTemplateExcel($headers)
+            : $this->genererTemplateCsv($headers);
     }
 
-    private function genererTemplateCsv(array $headers, array $exemples): StreamedResponse
+    private function genererTemplateCsv(array $headers): StreamedResponse
     {
-        $response = new StreamedResponse(function () use ($headers, $exemples) {
+        $response = new StreamedResponse(function () use ($headers) {
             $handle = fopen('php://output', 'w');
             fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
             fputcsv($handle, $headers, ';');
-            foreach ($exemples as $row) {
-                fputcsv($handle, $row, ';');
-            }
+
             fclose($handle);
         });
         $response->headers->set('Content-Type', 'text/csv; charset=UTF-8');
@@ -427,17 +430,13 @@ class ProduitController extends AbstractController
         return $response;
     }
 
-    private function genererTemplateExcel(array $headers, array $exemples): StreamedResponse
+    private function genererTemplateExcel(array $headers): StreamedResponse
     {
-        // Même astuce tabulation que exportExcel() : ouvrable directement par Excel,
-        // sans dépendre de PhpSpreadsheet.
-        $response = new StreamedResponse(function () use ($headers, $exemples) {
+        $response = new StreamedResponse(function () use ($headers) {
             $handle = fopen('php://output', 'w');
             fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
             fputcsv($handle, $headers, "\t");
-            foreach ($exemples as $row) {
-                fputcsv($handle, $row, "\t");
-            }
+            
             fclose($handle);
         });
         $response->headers->set('Content-Type', 'application/vnd.ms-excel; charset=UTF-8');
@@ -446,7 +445,7 @@ class ProduitController extends AbstractController
     }
 
     // ══════════════════════════════════════════════════════════════════
-    //  CRÉATION DE CATÉGORIE à la volée (AJAX depuis SweetAlert)
+    //  CRÉATION DE CATÉGORIE (AJAX)
     // ══════════════════════════════════════════════════════════════════
 
     #[Route('/import/create-category', name: 'app_produit_import_create_category', methods: ['POST'])]
@@ -563,32 +562,6 @@ class ProduitController extends AbstractController
         return implode("\n", $lines) ?: null;
     }
 
-    private function creerHistoriqueEchec(
-        EntityManagerInterface $em,
-        string $nomFichier,
-        string $format,
-        string $messageErreur
-    ): void {
-        $historique = new HistoriqueImportation();
-        $historique->setNomFichier($nomFichier);
-        $historique->setFormatFichier($format);
-        $historique->setUser($this->getUser());
-        $historique->setNombreLignes(0);
-        $historique->setNombreImportes(0);
-        $historique->setNombreErreurs(1);
-        $historique->setStatut(HistoriqueImportation::STATUT_ECHEC);
-        $historique->setMessageResume($messageErreur);
-        $historique->setDetailErreurs(json_encode([
-            ['ligne' => 0, 'sku' => '—', 'erreur' => $messageErreur, 'type' => 'erreur'],
-        ]));
-        $em->persist($historique);
-        $em->flush();
-    }
-
-    // ══════════════════════════════════════════════════════════════════
-    //  PARSEURS
-    // ══════════════════════════════════════════════════════════════════
-
     private function detecterCaracteristiquesIncompatibles(array $rows): array
     {
         $problemes = [];
@@ -614,6 +587,32 @@ class ProduitController extends AbstractController
         }
         return $problemes;
     }
+
+    private function creerHistoriqueEchec(
+        EntityManagerInterface $em,
+        string $nomFichier,
+        string $format,
+        string $messageErreur
+    ): void {
+        $historique = new HistoriqueImportation();
+        $historique->setNomFichier($nomFichier);
+        $historique->setFormatFichier($format);
+        $historique->setUser($this->getUser());
+        $historique->setNombreLignes(0);
+        $historique->setNombreImportes(0);
+        $historique->setNombreErreurs(1);
+        $historique->setStatut(HistoriqueImportation::STATUT_ECHEC);
+        $historique->setMessageResume($messageErreur);
+        $historique->setDetailErreurs(json_encode([
+            ['ligne' => 0, 'sku' => '—', 'erreur' => $messageErreur, 'type' => 'erreur'],
+        ]));
+        $em->persist($historique);
+        $em->flush();
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    //  PARSEURS
+    // ══════════════════════════════════════════════════════════════════
 
     private function parseJson(string $path): array
     {

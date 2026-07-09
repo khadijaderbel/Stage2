@@ -44,6 +44,26 @@
                     </div>
 
                     <!-- ══════════════════════════════════════
+                         TÉLÉCHARGER UN TEMPLATE PRÊT À REMPLIR
+                    ══════════════════════════════════════ -->
+                    <div class="template-download-box mb-4">
+                        <div class="template-download-label">
+                            <i class="fas fa-download" style="color:#64b4ff;"></i>
+                            Pas sûr du format ? Téléchargez un template déjà prêt :
+                        </div>
+                        <div class="d-flex gap-2 flex-wrap mt-2">
+                            <a href="{{ path('app_import_template', {format: 'csv'}) }}"
+                               class="template-download-btn csv">
+                                <i class="fas fa-file-csv"></i> Template CSV
+                            </a>
+                            <a href="{{ path('app_import_template', {format: 'excel'}) }}"
+                               class="template-download-btn excel">
+                                <i class="fas fa-file-excel"></i> Template Excel
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- ══════════════════════════════════════
                          RÈGLES DU FICHIER D'IMPORT
                     ══════════════════════════════════════ -->
                     <div class="import-rules-box mb-4">
@@ -104,16 +124,16 @@
                                         <tr>
                                             <td><code>image_url</code></td>
                                             <td><span class="badge-opt">Non</span></td>
-                                            <td>URL publique de l'image. Ignorée si invalide ou inaccessible.</td>
+                                            <td>URL publique de l'image. Ignorée si invalide ou inaccessible (non bloquant).</td>
                                         </tr>
                                     </tbody>
                                 </table>
                             </div>
                             <ul class="import-rules-notes small mb-0">
-                                <li>Si un <strong>SKU existe déjà</strong> avec le même statut, la ligne est ignorée.</li>
-                                <li>Si le SKU existe avec un <strong>statut différent</strong>, le produit est mis à jour.</li>
+                                <li>Si un <strong>SKU existe déjà</strong>, le produit est <strong>entièrement mis à jour</strong> avec les nouvelles valeurs.</li>
                                 <li>Une ligne sans <code>sku</code> ou sans <code>nom</code> est ignorée et comptée en erreur.</li>
                                 <li>Format JSON attendu : <code>{"produits":[{...}, {...}]}</code> ou <code>[{...}, {...}]</code>.</li>
+                                <li>Les <strong>avertissements</strong> (image invalide, description vide) n'empêchent pas l'import.</li>
                             </ul>
                         </div>
                     </div>
@@ -238,6 +258,10 @@
                                                     <span class="badge rounded-pill px-2 py-1" style="background:rgba(40,167,69,0.15);color:#28a745;">
                                                         <i class="fas fa-check-circle me-1"></i> Succès
                                                     </span>
+                                                {% elseif h.statut == 'succes_avec_warnings' %}
+                                                    <span class="badge rounded-pill px-2 py-1" style="background:rgba(212,160,23,0.2);color:#d4a017;">
+                                                        <i class="fas fa-exclamation-triangle me-1"></i> Succès ⚠️
+                                                    </span>
                                                 {% elseif h.statut == 'partiel' %}
                                                     <span class="badge rounded-pill px-2 py-1" style="background:rgba(255,193,7,0.15);color:#ffc107;">
                                                         <i class="fas fa-exclamation-triangle me-1"></i> Partiel
@@ -351,6 +375,55 @@
     }
     .import-rules-notes { color: var(--text-secondary); padding-left: 18px; }
     .import-rules-notes li { margin-bottom: 4px; }
+
+    /* ════════════════════════════════════
+       TEMPLATE DOWNLOAD BUTTONS
+    ════════════════════════════════════ */
+    .template-download-box {
+        border: 1px dashed rgba(100,180,255,0.4);
+        border-radius: 12px;
+        padding: 12px 14px;
+        background: rgba(100,180,255,0.06);
+    }
+    .template-download-label {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+    .template-download-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        border-radius: 10px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        border: 1.5px solid transparent;
+    }
+    .template-download-btn.csv {
+        background: rgba(0,255,163,0.1);
+        color: var(--emerald);
+        border-color: rgba(0,255,163,0.3);
+    }
+    .template-download-btn.csv:hover {
+        background: var(--emerald);
+        color: #0b1329;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0,255,163,0.2);
+    }
+    .template-download-btn.excel {
+        background: rgba(29,111,66,0.1);
+        color: #1d6f42;
+        border-color: rgba(29,111,66,0.3);
+    }
+    .template-download-btn.excel:hover {
+        background: #1d6f42;
+        color: #fff;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(29,111,66,0.2);
+    }
 
     #importDropZone:hover { border-color: var(--emerald) !important; background: rgba(0,255,163,0.04); }
 
@@ -596,7 +669,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             // Résultat de l'import
-            const isSuccess = data.action === 'succes' || data.action === 'deja_existe';
+            const isSuccess = data.action === 'succes' || data.action === 'deja_existe' || data.action === 'succes_avec_warnings';
             const isPartial = data.action === 'partiel';
             const isEchec = data.action === 'echec';
 
@@ -616,6 +689,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 icon = 'info';
                 confirmColor = '#64b4ff';
                 title = 'ℹ️ Aucune modification';
+            } else if (data.action === 'succes_avec_warnings') {
+                icon = 'success';
+                confirmColor = '#d4a017';
+                title = '✅ Importation réussie (avec avertissements)';
             }
 
             let detailsHtml = '';
@@ -626,7 +703,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (c.mis_a_jour > 0) items.push(`<span style="color:#00cc82;">${c.mis_a_jour} mis à jour</span>`);
                 if (c.deja_existe > 0) items.push(`<span style="color:#6c757d;">${c.deja_existe} déjà existant(s)</span>`);
                 if (c.erreurs > 0) items.push(`<span style="color:#dc3545;">${c.erreurs} erreur(s)</span>`);
-                if (c.ignores > 0) items.push(`<span style="color:#f0a500;">${c.ignores} ignoré(s)</span>`);
 
                 if (items.length > 0) {
                     detailsHtml = `<div style="margin:12px 0;font-size:0.95rem;">${items.join(' · ')}</div>`;
@@ -725,7 +801,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            const isSuccess = data.action === 'succes' || data.action === 'deja_existe';
+            const isSuccess = data.action === 'succes' || data.action === 'deja_existe' || data.action === 'succes_avec_warnings';
             const isPartial = data.action === 'partiel';
             const isEchec = data.action === 'echec';
 
@@ -745,6 +821,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 icon = 'info';
                 confirmColor = '#64b4ff';
                 title = 'ℹ️ Aucune modification';
+            } else if (data.action === 'succes_avec_warnings') {
+                icon = 'success';
+                confirmColor = '#d4a017';
+                title = '✅ Importation réussie (avec avertissements)';
             }
 
             let detailsHtml = '';
@@ -755,7 +835,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (c.mis_a_jour > 0) items.push(`<span style="color:#00cc82;">${c.mis_a_jour} mis à jour</span>`);
                 if (c.deja_existe > 0) items.push(`<span style="color:#6c757d;">${c.deja_existe} déjà existant(s)</span>`);
                 if (c.erreurs > 0) items.push(`<span style="color:#dc3545;">${c.erreurs} erreur(s)</span>`);
-                if (c.ignores > 0) items.push(`<span style="color:#f0a500;">${c.ignores} ignoré(s)</span>`);
 
                 if (items.length > 0) {
                     detailsHtml = `<div style="margin:12px 0;font-size:0.95rem;">${items.join(' · ')}</div>`;

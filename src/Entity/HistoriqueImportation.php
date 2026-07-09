@@ -15,6 +15,7 @@ class HistoriqueImportation
     public const STATUT_SUCCES    = 'succes';
     public const STATUT_PARTIEL   = 'partiel';
     public const STATUT_ECHEC     = 'echec';
+    public const STATUT_SUCCES_AVEC_WARNINGS = 'succes_avec_warnings'; // NOUVEAU
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -39,7 +40,7 @@ class HistoriqueImportation
     #[ORM\Column]
     private int $nombreErreurs = 0;
 
-    #[ORM\Column(length: 20)]
+    #[ORM\Column(length: 30)] // Augmenté pour accueillir 'succes_avec_warnings'
     private string $statut = self::STATUT_EN_COURS;
 
     #[ORM\Column(type: 'text', nullable: true)]
@@ -104,12 +105,65 @@ class HistoriqueImportation
     // ── Helpers ────────────────────────────────────────────────────────────
 
     public function isSucces(): bool  { return $this->statut === self::STATUT_SUCCES; }
+    public function isSuccesAvecWarnings(): bool { return $this->statut === self::STATUT_SUCCES_AVEC_WARNINGS; }
     public function isPartiel(): bool { return $this->statut === self::STATUT_PARTIEL; }
     public function isEchec(): bool   { return $this->statut === self::STATUT_ECHEC; }
+    public function isEnCours(): bool { return $this->statut === self::STATUT_EN_COURS; }
+    public function isReussi(): bool  { return $this->isSucces() || $this->isSuccesAvecWarnings(); }
+
+    public function getLibelleStatut(): string
+    {
+        return match ($this->statut) {
+            self::STATUT_SUCCES    => 'Réussi',
+            self::STATUT_SUCCES_AVEC_WARNINGS => 'Réussi ⚠️',
+            self::STATUT_PARTIEL   => 'Partiel',
+            self::STATUT_ECHEC     => 'Échoué',
+            self::STATUT_EN_COURS  => 'En cours',
+            default                => $this->statut,
+        };
+    }
+
+    public function getCouleurStatut(): string
+    {
+        return match ($this->statut) {
+            self::STATUT_SUCCES    => '#28a745',
+            self::STATUT_SUCCES_AVEC_WARNINGS => '#d4a017',
+            self::STATUT_PARTIEL   => '#f0a500',
+            self::STATUT_ECHEC     => '#dc3545',
+            self::STATUT_EN_COURS  => '#6c757d',
+            default                => '#6c757d',
+        };
+    }
+
+    public function getIconeStatut(): string
+    {
+        return match ($this->statut) {
+            self::STATUT_SUCCES    => 'fa-check-circle',
+            self::STATUT_SUCCES_AVEC_WARNINGS => 'fa-exclamation-triangle',
+            self::STATUT_PARTIEL   => 'fa-exclamation-triangle',
+            self::STATUT_ECHEC     => 'fa-times-circle',
+            self::STATUT_EN_COURS  => 'fa-spinner fa-spin',
+            default                => 'fa-clock',
+        };
+    }
+
+    public function getBadgeStatut(): string
+    {
+        return match ($this->statut) {
+            self::STATUT_SUCCES    => '<span class="badge rounded-pill px-2 py-1" style="background:rgba(40,167,69,0.15);color:#28a745;"><i class="fas fa-check-circle me-1"></i> Réussi</span>',
+            self::STATUT_SUCCES_AVEC_WARNINGS => '<span class="badge rounded-pill px-2 py-1" style="background:rgba(212,160,23,0.2);color:#d4a017;"><i class="fas fa-exclamation-triangle me-1"></i> Réussi ⚠️</span>',
+            self::STATUT_PARTIEL   => '<span class="badge rounded-pill px-2 py-1" style="background:rgba(240,165,0,0.15);color:#f0a500;"><i class="fas fa-exclamation-triangle me-1"></i> Partiel</span>',
+            self::STATUT_ECHEC     => '<span class="badge rounded-pill px-2 py-1" style="background:rgba(220,53,69,0.15);color:#dc3545;"><i class="fas fa-times-circle me-1"></i> Échoué</span>',
+            self::STATUT_EN_COURS  => '<span class="badge rounded-pill px-2 py-1" style="background:rgba(108,117,125,0.15);color:#6c757d;"><i class="fas fa-spinner fa-spin me-1"></i> En cours</span>',
+            default                => '<span class="badge rounded-pill px-2 py-1" style="background:rgba(108,117,125,0.15);color:#6c757d;">' . $this->statut . '</span>',
+        };
+    }
 
     public function finaliserStatut(): void
     {
-        if ($this->nombreImportes === 0) {
+        if ($this->nombreImportes === 0 && $this->nombreErreurs === 0) {
+            $this->statut = self::STATUT_SUCCES;
+        } elseif ($this->nombreImportes === 0 && $this->nombreErreurs > 0) {
             $this->statut = self::STATUT_ECHEC;
         } elseif ($this->nombreErreurs > 0) {
             $this->statut = self::STATUT_PARTIEL;
