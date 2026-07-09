@@ -2,13 +2,12 @@
   "produits": [
 
     {
-      "sku": "REF11-006",
+      "sku": "REF162-006",
       "nom": "Chargeur Rapide 65W",
       "categorie": "Accessoires",
       "statut": "actif",
       "caracteristiques": [
 
-        "Charge rapide: PD 3.0",
         "Protection: Surtension",
         "Poids: 150g"
       ]

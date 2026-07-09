@@ -184,7 +184,7 @@
                                 </th>
                                 <th class="px-4 py-3 text-uppercase small fw-bold text-end"
                                     style="font-size:0.65rem;letter-spacing:1px;color:var(--text-secondary);">
-                                    JOURNAL
+                                    ACTIONS
                                 </th>
                             </tr>
                         </thead>
@@ -199,7 +199,7 @@
                                         {{ h.dateImportation|date('d/m/Y, H:i') }}
                                     </td>
 
-                                    {# Nom du fichier #}
+                                    {# Nom du fichier - cliquable pour prévisualisation #}
                                     <td class="px-4 py-3">
                                         <div class="d-flex align-items-center gap-2">
                                             {# Icône format #}
@@ -218,10 +218,19 @@
                                             <i class="fas {{ fmtIcons[h.formatFichier] ?? 'fa-file' }}"
                                                style="color:{{ fmtColors[h.formatFichier] ?? '#6c757d' }};
                                                       font-size:0.95rem;"></i>
-                                            <span class="fw-semibold"
-                                                  style="color:var(--text-primary);font-size:0.9rem;">
-                                                {{ h.nomFichier }}
-                                            </span>
+                                            <button class="btn btn-link p-0 m-0 text-start preview-btn"
+                                                    data-id="{{ h.id }}"
+                                                    data-filename="{{ h.nomFichier }}"
+                                                    style="color:var(--text-primary);text-decoration:none;
+                                                           font-weight:600;font-size:0.9rem;border:none;
+                                                           background:transparent;cursor:pointer;"
+                                                    onmouseover="this.style.color='var(--emerald)';"
+                                                    onmouseout="this.style.color='var(--text-primary)';">
+                                                <span style="border-bottom:1px dashed var(--border-color);">
+                                                    {{ h.nomFichier }}
+                                                </span>
+                                                <i class="fas fa-eye ms-1" style="font-size:0.7rem;color:var(--text-secondary);"></i>
+                                            </button>
                                         </div>
                                     </td>
 
@@ -276,16 +285,30 @@
                                         {% endif %}
                                     </td>
 
-                                    {# Bouton journal #}
+                                    {# Actions #}
                                     <td class="px-4 py-3 text-end">
-                                        <a href="{{ path('app_historique_importation_show', {'id': h.id}) }}"
-                                           class="btn btn-sm rounded-circle journal-btn"
-                                           style="width:34px;height:34px;
-                                                  border:1.5px solid var(--border-color);
-                                                  color:var(--text-secondary);background:transparent;"
-                                           title="Voir le journal">
-                                            <i class="fas fa-file-lines" style="font-size:0.8rem;"></i>
-                                        </a>
+                                        <div class="d-flex justify-content-end gap-2">
+                                            <a href="{{ path('app_historique_importation_download', {'id': h.id}) }}"
+                                               class="btn btn-sm rounded-circle"
+                                               style="width:34px;height:34px;
+                                                      border:1.5px solid rgba(100,180,255,0.3);
+                                                      color:#64b4ff;background:rgba(100,180,255,0.06);"
+                                               title="Télécharger le fichier original"
+                                               onmouseover="this.style.borderColor='#64b4ff';this.style.background='rgba(100,180,255,0.15)';"
+                                               onmouseout="this.style.borderColor='rgba(100,180,255,0.3)';this.style.background='rgba(100,180,255,0.06)';">
+                                                <i class="fas fa-download" style="font-size:0.8rem;"></i>
+                                            </a>
+                                            <a href="{{ path('app_historique_importation_show', {'id': h.id}) }}"
+                                               class="btn btn-sm rounded-circle journal-btn"
+                                               style="width:34px;height:34px;
+                                                      border:1.5px solid var(--border-color);
+                                                      color:var(--text-secondary);background:transparent;"
+                                               title="Voir le journal"
+                                               onmouseover="this.style.borderColor='var(--emerald)';this.style.color='var(--emerald)';"
+                                               onmouseout="this.style.borderColor='var(--border-color)';this.style.color='var(--text-secondary)';">
+                                                <i class="fas fa-file-lines" style="font-size:0.8rem;"></i>
+                                            </a>
+                                        </div>
                                     </td>
 
                                 </tr>
@@ -300,6 +323,57 @@
 
 </div>
 
+{# ── MODAL DE PRÉVISUALISATION ────────────────────────────────── #}
+<div class="modal fade" id="previewModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content rounded-4 border-0"
+             style="background:var(--card-bg-light);border:1px solid var(--border-color) !important;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold" style="color:var(--text-primary);">
+                    <i class="fas fa-file-import me-2" style="color:#64b4ff;"></i>
+                    Prévisualisation du fichier : <span id="previewFilename" style="color:var(--emerald);"></span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"
+                        style="filter:invert(1);opacity:0.5;"></button>
+            </div>
+            <div class="modal-body pt-3">
+                <div id="previewLoading" class="text-center py-5" style="color:var(--text-secondary);">
+                    <i class="fas fa-spinner fa-spin fa-3x mb-3"></i>
+                    <p>Chargement du fichier...</p>
+                </div>
+                <div id="previewContent" style="display:none;">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="badge" id="previewFormat" style="background:rgba(0,255,163,0.1);color:var(--emerald);"></span>
+                        <div>
+                            <button type="button" id="previewDownloadBtn" class="btn btn-sm"
+                                    style="background:rgba(100,180,255,0.1);color:#64b4ff;
+                                           border:1px solid rgba(100,180,255,0.3);border-radius:8px;">
+                                <i class="fas fa-download me-1"></i> Télécharger
+                            </button>
+                        </div>
+                    </div>
+                    <div id="previewFileContent" style="max-height:500px;overflow:auto;
+                          background:var(--bg-body);border-radius:12px;
+                          padding:16px;border:1px solid var(--border-color);">
+                    </div>
+                </div>
+                <div id="previewError" style="display:none;" class="text-center py-5">
+                    <i class="fas fa-exclamation-triangle fa-3x mb-3" style="color:#dc3545;"></i>
+                    <p style="color:var(--text-secondary);">Impossible de charger le fichier.</p>
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-sm px-4"
+                        data-bs-dismiss="modal"
+                        style="background:transparent;border:1.5px solid var(--border-color);
+                               color:var(--text-secondary);border-radius:10px;">
+                    Fermer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {# Formulaire caché pour vider l'historique #}
 <form id="clearForm"
       action="{{ path('app_historique_importation_clear') }}"
@@ -310,35 +384,115 @@
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-function confirmClear() {
-    Swal.fire({
-        title: 'Vider l\'historique ?',
-        html: `<div style="text-align:left;">
-            <p style="color:var(--text-secondary);">
-                Toutes les entrées d'historique seront <strong style="color:#dc3545;">définitivement supprimées</strong>.
-            </p>
-            <p style="font-size:0.9rem;color:var(--text-secondary);">
-                <i class="fas fa-info-circle" style="color:#64b4ff;"></i>
-                Les produits importés ne seront <strong>pas</strong> supprimés.
-            </p>
-        </div>`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#dc3545',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: '<i class="fas fa-trash me-1"></i> Vider',
-        cancelButtonText: '<i class="fas fa-times me-1"></i> Annuler',
-        background: getComputedStyle(document.documentElement)
-            .getPropertyValue('--card-bg-light').trim() || '#fff',
-        color: getComputedStyle(document.documentElement)
-            .getPropertyValue('--text-primary').trim() || '#111',
-        customClass: {
-            popup: 'rounded-4',
-            confirmButton: 'btn btn-danger px-4 py-2 rounded-pill',
-            cancelButton:  'btn btn-secondary px-4 py-2 rounded-pill',
-        }
-    }).then(r => { if (r.isConfirmed) document.getElementById('clearForm').submit(); });
-}
+document.addEventListener('DOMContentLoaded', function() {
+
+    // ── Prévisualisation du fichier ─────────────────────────────────────
+    const previewModal = new bootstrap.Modal(document.getElementById('previewModal'));
+    const previewBtns = document.querySelectorAll('.preview-btn');
+
+    previewBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const id = this.dataset.id;
+            const filename = this.dataset.filename;
+
+            document.getElementById('previewFilename').textContent = filename;
+            document.getElementById('previewLoading').style.display = 'block';
+            document.getElementById('previewContent').style.display = 'none';
+            document.getElementById('previewError').style.display = 'none';
+
+            previewModal.show();
+
+            // Charger le contenu
+            fetch('/historique-importation/' + id + '/preview')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('previewLoading').style.display = 'none';
+
+                    if (!data.success) {
+                        document.getElementById('previewError').style.display = 'block';
+                        return;
+                    }
+
+                    document.getElementById('previewContent').style.display = 'block';
+                    document.getElementById('previewFormat').textContent = data.format.toUpperCase();
+
+                    // Afficher le contenu selon le format
+                    const contentDiv = document.getElementById('previewFileContent');
+
+                    if (data.isCsv && data.previewData && data.previewData.length > 0) {
+                        // Affichage CSV en tableau
+                        let html = '<div class="table-responsive"><table class="table table-sm table-hover" style="color:var(--text-primary);font-size:0.85rem;">';
+                        // En-têtes
+                        const headers = Object.keys(data.previewData[0]);
+                        html += '<thead><tr>';
+                        headers.forEach(h => {
+                            html += `<th style="color:var(--text-secondary);font-weight:600;">${h}</th>`;
+                        });
+                        html += '</tr></thead><tbody>';
+                        // Données
+                        data.previewData.forEach(row => {
+                            html += '<tr>';
+                            headers.forEach(h => {
+                                html += `<td>${row[h] || ''}</td>`;
+                            });
+                            html += '</tr>';
+                        });
+                        html += '</tbody></table></div>';
+                        contentDiv.innerHTML = html;
+                    } else if (data.isJson) {
+                        // Affichage JSON formaté
+                        const formatted = data.content;
+                        contentDiv.innerHTML = `<pre style="margin:0;color:var(--text-secondary);font-size:0.85rem;white-space:pre-wrap;">${formatted}</pre>`;
+                    } else {
+                        // Affichage texte brut
+                        contentDiv.innerHTML = `<pre style="margin:0;color:var(--text-secondary);font-size:0.85rem;white-space:pre-wrap;">${data.content}</pre>`;
+                    }
+
+                    // Téléchargement depuis la modale
+                    document.getElementById('previewDownloadBtn').onclick = function() {
+                        window.location.href = '/historique-importation/' + id + '/download';
+                    };
+
+                })
+                .catch(error => {
+                    document.getElementById('previewLoading').style.display = 'none';
+                    document.getElementById('previewError').style.display = 'block';
+                    console.error('Erreur:', error);
+                });
+        });
+    });
+
+    // ── Confirmation de vidage ─────────────────────────────────────────
+    window.confirmClear = function() {
+        Swal.fire({
+            title: 'Vider l\'historique ?',
+            html: `<div style="text-align:left;">
+                <p style="color:var(--text-secondary);">
+                    Toutes les entrées d'historique seront <strong style="color:#dc3545;">définitivement supprimées</strong>.
+                </p>
+                <p style="font-size:0.9rem;color:var(--text-secondary);">
+                    <i class="fas fa-info-circle" style="color:#64b4ff;"></i>
+                    Les produits importés ne seront <strong>pas</strong> supprimés.
+                </p>
+            </div>`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '<i class="fas fa-trash me-1"></i> Vider',
+            cancelButtonText: '<i class="fas fa-times me-1"></i> Annuler',
+            background: getComputedStyle(document.documentElement)
+                .getPropertyValue('--card-bg-light').trim() || '#fff',
+            color: getComputedStyle(document.documentElement)
+                .getPropertyValue('--text-primary').trim() || '#111',
+            customClass: {
+                popup: 'rounded-4',
+                confirmButton: 'btn btn-danger px-4 py-2 rounded-pill',
+                cancelButton:  'btn btn-secondary px-4 py-2 rounded-pill',
+            }
+        }).then(r => { if (r.isConfirmed) document.getElementById('clearForm').submit(); });
+    };
+});
 </script>
 
 <style>
@@ -347,6 +501,10 @@ function confirmClear() {
 
     .journal-btn:hover {
         border-color: var(--emerald) !important;
+        color: var(--emerald) !important;
+    }
+
+    .preview-btn:hover .fa-eye {
         color: var(--emerald) !important;
     }
 
@@ -365,5 +523,22 @@ function confirmClear() {
     }
     .swal2-cancel { background: #6c757d !important; }
     .swal2-actions { gap: 0.75rem !important; }
+
+    /* Scrollbar personnalisée pour la prévisualisation */
+    #previewFileContent::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+    #previewFileContent::-webkit-scrollbar-track {
+        background: var(--bg-body);
+        border-radius: 4px;
+    }
+    #previewFileContent::-webkit-scrollbar-thumb {
+        background: var(--border-color);
+        border-radius: 4px;
+    }
+    #previewFileContent::-webkit-scrollbar-thumb:hover {
+        background: var(--text-secondary);
+    }
 </style>
 {% endblock %}

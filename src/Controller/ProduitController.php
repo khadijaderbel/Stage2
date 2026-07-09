@@ -8,6 +8,7 @@ use App\Entity\Produit;
 use App\Form\ProduitType;
 use App\Repository\HistoriqueImportationRepository;
 use App\Service\AiProviderManager;
+use App\Service\ImportBackupService;
 use Doctrine\ORM\EntityManagerInterface;
 use Knp\Component\Pager\PaginatorInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -60,342 +61,353 @@ class ProduitController extends AbstractController
     //  IMPORT
     // ══════════════════════════════════════════════════════════════════
 
-    #[Route('/import', name: 'app_produit_import', methods: ['POST'])]
-    public function import(Request $request, EntityManagerInterface $em, AiProviderManager $aiProviderManager): JsonResponse
-    {
-        $this->denyAccessUnlessGranted('ROLE_ADMIN');
+    // ══════════════════════════════════════════════════════════════════
+//  IMPORT
+// ══════════════════════════════════════════════════════════════════
 
-        $aiProvider = $request->getSession()->get('ai_provider', 'gemini');
+// ══════════════════════════════════════════════════════════════════
+//  IMPORT
+// ══════════════════════════════════════════════════════════════════
 
-        $file = $request->files->get('importFile');
-        if (!$file) {
-            return new JsonResponse([
-                'action'  => 'erreur',
-                'message' => 'Aucun fichier reçu.',
-            ], 400);
-        }
+#[Route('/import', name: 'app_produit_import', methods: ['POST'])]
+public function import(
+    Request $request,
+    EntityManagerInterface $em,
+    AiProviderManager $aiProviderManager,
+    ImportBackupService $backupService
+): JsonResponse {
+    $this->denyAccessUnlessGranted('ROLE_ADMIN');
 
-        $extension    = strtolower($file->getClientOriginalExtension());
-        $originalName = $file->getClientOriginalName();
+    $aiProvider = $request->getSession()->get('ai_provider', 'gemini');
 
-        // ── 1. Parser le fichier ──────────────────────────────────────
-        try {
-            $rows = match ($extension) {
-                'json'        => $this->parseJson($file->getPathname()),
-                'csv'         => $this->parseCsv($file->getPathname()),
-                'xlsx', 'xls' => $this->parseExcel($file->getPathname()),
-                default       => throw new \InvalidArgumentException(
-                    "Format « .{$extension} » non supporté. Utilisez JSON, CSV, XLSX ou XLS."
-                ),
-            };
-        } catch (\Throwable $e) {
-            $this->creerHistoriqueEchec($em, $originalName, $extension, $e->getMessage());
-            return new JsonResponse([
-                'action'  => 'erreur',
-                'message' => $e->getMessage(),
-            ], 422);
-        }
-
-        if (empty($rows)) {
-            $this->creerHistoriqueEchec($em, $originalName, $extension, 'Le fichier est vide ou ne contient aucune ligne valide.');
-            return new JsonResponse([
-                'action'  => 'erreur',
-                'message' => 'Le fichier est vide ou ne contient aucune ligne valide.',
-            ], 422);
-        }
-
-        $fixFormat = (bool) $request->request->get('fixFormat', false);
-        $problemesFormat = $this->detecterCaracteristiquesIncompatibles($rows);
-
-        if (!empty($problemesFormat) && !$fixFormat) {
-            return new JsonResponse([
-                'action'  => 'format_incompatible',
-                'lignes'  => $problemesFormat,
-                'message' => count($problemesFormat) === 1
-                    ? '1 ligne utilise des virgules/points-virgules dans les caractéristiques (non autorisé).'
-                    : count($problemesFormat) . ' lignes utilisent des virgules/points-virgules dans les caractéristiques (non autorisé).',
-            ]);
-        }
-
-        // ── 2. Détecter les catégories inconnues ─────────────────────
-        $categoriesConnues   = $this->chargerCategoriesIndexees($em);
-        $categoriesInconnues = $this->detecterCategoriesInconnues($rows, $categoriesConnues);
-
-        $skipCategories = (bool) $request->request->get('skipCategories', false);
-
-        if (!empty($categoriesInconnues) && !$skipCategories) {
-            return new JsonResponse([
-                'action'              => 'categories_manquantes',
-                'categoriesInconnues' => array_values($categoriesInconnues),
-                'message'             => count($categoriesInconnues) === 1
-                    ? "La catégorie « " . reset($categoriesInconnues) . " » n'existe pas dans le système."
-                    : count($categoriesInconnues) . ' catégorie(s) inconnue(s) détectée(s) dans le fichier.',
-            ]);
-        }
-
-        // ── 3. Créer l'historique EN COURS ───────────────────────────
-        $user       = $this->getUser();
-        $historique = new HistoriqueImportation();
-        $historique->setNomFichier($originalName);
-        $historique->setFormatFichier($extension);
-        $historique->setUser($user);
-        $historique->setNombreLignes(count($rows));
-        $historique->setStatut(HistoriqueImportation::STATUT_EN_COURS);
-        $em->persist($historique);
-        $em->flush();
-
-        // ── 4. Traiter chaque ligne ───────────────────────────────────
-        $compteurs = [
-            'crees'       => 0,
-            'mis_a_jour'  => 0,
-            'deja_existe' => 0,
-            'erreurs'     => 0,
-        ];
-        $journalErreurs        = [];
-        $journalAvertissements = [];
-
-        $categoriesConnues = $this->chargerCategoriesIndexees($em);
-
-        foreach ($rows as $lineIndex => $row) {
-            $lineNum = $lineIndex + 1;
-            $sku     = trim($row['sku'] ?? '');
-            $nom     = trim($row['nom'] ?? '');
-            $catNom  = trim($row['categorie'] ?? $row['catégorie'] ?? '');
-
-            // ── Validation obligatoire : SKU + Nom ────────────────────
-            if ($sku === '' || $nom === '') {
-                $msg = $sku === ''
-                    ? 'SKU manquant — ligne ignorée.'
-                    : 'Nom du produit manquant — ligne ignorée.';
-                $journalErreurs[] = ['ligne' => $lineNum, 'sku' => $sku ?: '—', 'erreur' => $msg];
-                $compteurs['erreurs']++;
-                continue;
-            }
-
-            // ── Catégorie inconnue + skipCategories=true ──────────────
-            if ($catNom !== '' && !isset($categoriesConnues[mb_strtolower($catNom)]) && $skipCategories) {
-                $journalErreurs[] = [
-                    'ligne'  => $lineNum,
-                    'sku'    => $sku,
-                    'erreur' => "Catégorie « {$catNom} » introuvable — produit ignoré.",
-                ];
-                $compteurs['erreurs']++;
-                continue;
-            }
-
-            // ── Vérification URL image (NON BLOQUANTE - simple avertissement) ──
-            $imageUrl = trim($row['image_url'] ?? '');
-            if ($imageUrl !== '' && !$this->isUrlValide($imageUrl)) {
-                $journalAvertissements[] = [
-                    'ligne'         => $lineNum,
-                    'sku'           => $sku,
-                    'avertissement' => "URL image invalide ou inaccessible — produit importé sans image.",
-                ];
-                $imageUrl = '';
-            }
-
-            // ── Description originale vide (NON BLOQUANTE) ────────────
-            $descOriginale = trim($row['description_originale'] ?? $row['description'] ?? '');
-            if ($descOriginale === '') {
-                $journalAvertissements[] = [
-                    'ligne'         => $lineNum,
-                    'sku'           => $sku,
-                    'avertissement' => 'Description originale vide — produit importé sans description.',
-                ];
-            }
-
-            // ── Statut (défaut : inactif) ─────────────────────────────
-            $statutImport = strtolower(trim($row['statut'] ?? 'inactif'));
-            if (!in_array($statutImport, ['actif', 'inactif', 'rupture'])) {
-                $statutImport = 'inactif';
-            }
-
-            // ── Caractéristiques → liste normalisée ───────────────────
-            $caracteristiques = $this->normaliserCaracteristiques(
-                $row['caracteristiques'] ?? $row['caractéristiques'] ?? null,
-                $fixFormat
-            );
-
-            // ── Résolution catégorie ───────────────────────────────────
-            $categorieEntity = null;
-            if ($catNom !== '' && isset($categoriesConnues[mb_strtolower($catNom)])) {
-                $categorieEntity = $categoriesConnues[mb_strtolower($catNom)];
-            }
-
-            // ── Cherche si le produit existe déjà (par SKU) ───────────
-            $produitExistant = $em->getRepository(Produit::class)->findOneBy(['sku' => $sku]);
-
-            $descriptionGenereeFile = trim($row['description_generee'] ?? $row['description_générée'] ?? '');
-
-            try {
-                if ($produitExistant) {
-                    // ── Produit déjà en base : ON MODIFIE TOUT ────────
-                    $ancienStatut = $produitExistant->getStatut();
-                    $produitExistant->setNom($nom);
-                    $produitExistant->setStatut($statutImport);
-                    $produitExistant->setCaracteristiques($caracteristiques);
-                    $produitExistant->setDescriptionOriginale($descOriginale ?: null);
-                    if ($imageUrl !== '') {
-                        $produitExistant->setImageUrl($imageUrl);
-                    }
-                    if ($categorieEntity) {
-                        $produitExistant->setCategorie($categorieEntity);
-                    }
-                    $produitExistant->setDateModification(new \DateTime());
-
-                    if ($descriptionGenereeFile !== '') {
-                        $produitExistant->setDescriptionGeneree($descriptionGenereeFile);
-                    } else {
-                        try {
-                            $resultatIA = $aiProviderManager->genererContenuIA($produitExistant, $aiProvider);
-                            $produitExistant->setDescriptionGeneree($resultatIA['description']);
-                            if ($resultatIA['imageUrl'] !== null) {
-                                $produitExistant->setImageUrl($resultatIA['imageUrl']);
-                            }
-                            if ($resultatIA['fallback']) {
-                                $journalAvertissements[] = [
-                                    'ligne' => $lineNum, 'sku' => $sku,
-                                    'avertissement' => "Génération IA via {$resultatIA['provider']} (bascule automatique).",
-                                ];
-                            }
-                        } catch (\Throwable $e) {
-                            $journalAvertissements[] = [
-                                'ligne' => $lineNum, 'sku' => $sku,
-                                'avertissement' => 'Génération IA indisponible pour ce produit.',
-                            ];
-                        }
-                    }
-
-                    $journalAvertissements[] = [
-                        'ligne'         => $lineNum,
-                        'sku'           => $sku,
-                        'avertissement' => "Mise à jour : statut changé de « {$ancienStatut} » → « {$statutImport} ».",
-                    ];
-                    $compteurs['mis_a_jour']++;
-
-                } else {
-                    // ── Nouveau produit ───────────────────────────────
-                    $produit = new Produit();
-                    $produit->setSku($sku);
-                    $produit->setNom($nom);
-                    $produit->setStatut($statutImport);
-                    $produit->setCaracteristiques($caracteristiques);
-                    $produit->setDescriptionOriginale($descOriginale ?: null);
-                    $produit->setImageUrl($imageUrl ?: null);
-                    $produit->setUtilisateur($user);
-                    if ($categorieEntity) {
-                        $produit->setCategorie($categorieEntity);
-                    }
-
-                    if ($descriptionGenereeFile !== '') {
-                        $produit->setDescriptionGeneree($descriptionGenereeFile);
-                    } else {
-                        try {
-                            $resultatIA = $aiProviderManager->genererContenuIA($produit, $aiProvider);
-                            $produit->setDescriptionGeneree($resultatIA['description']);
-                            if ($resultatIA['imageUrl'] !== null) {
-                                $produit->setImageUrl($resultatIA['imageUrl']);
-                            }
-                            if ($resultatIA['fallback']) {
-                                $journalAvertissements[] = [
-                                    'ligne' => $lineNum, 'sku' => $sku,
-                                    'avertissement' => "Génération IA via {$resultatIA['provider']} (bascule automatique).",
-                                ];
-                            }
-                        } catch (\Throwable $e) {
-                            $journalAvertissements[] = [
-                                'ligne' => $lineNum, 'sku' => $sku,
-                                'avertissement' => 'Génération IA indisponible pour ce produit.',
-                            ];
-                        }
-                    }
-
-                    $em->persist($produit);
-                    $compteurs['crees']++;
-                }
-
-            } catch (\Throwable $e) {
-                $journalErreurs[] = [
-                    'ligne'  => $lineNum,
-                    'sku'    => $sku,
-                    'erreur' => $e->getMessage(),
-                ];
-                $compteurs['erreurs']++;
-            }
-        }
-
-        // ── 5. Flush ──────────────────────────────────────────────────
-        $em->flush();
-
-        // ── 6. Finaliser l'historique ─────────────────────────────────
-        $totalImportes = $compteurs['crees'] + $compteurs['mis_a_jour'];
-        $totalErreurs  = $compteurs['erreurs'];
-
-        $historique->setNombreImportes($totalImportes);
-        $historique->setNombreErreurs($totalErreurs);
-
-        // Fusionne erreurs + avertissements, triés par numéro de ligne
-        $toutLesDetails = array_merge(
-            array_map(fn($e) => array_merge($e, ['type' => 'erreur']), $journalErreurs),
-            array_map(fn($a) => [
-                'ligne'  => $a['ligne'],
-                'sku'    => $a['sku'],
-                'erreur' => $a['avertissement'],
-                'type'   => 'avertissement',
-            ], $journalAvertissements)
-        );
-        usort($toutLesDetails, fn($a, $b) => $a['ligne'] <=> $b['ligne']);
-        $historique->setDetailErreurs(
-            $toutLesDetails ? json_encode($toutLesDetails, JSON_UNESCAPED_UNICODE) : null
-        );
-
-        // Statut final de l'historique
-        if ($totalImportes === 0 && $totalErreurs === 0 && $compteurs['deja_existe'] > 0) {
-            // Tous les produits existaient déjà → SUCCES
-            $historique->setStatut(HistoriqueImportation::STATUT_SUCCES);
-            $resume = "Tous les produits existaient déjà — aucune modification.";
-            $actionResult = 'deja_existe';
-
-        } elseif ($totalImportes === 0 && $totalErreurs > 0) {
-            // Aucun produit importé, uniquement des erreurs → ECHEC
-            $historique->setStatut(HistoriqueImportation::STATUT_ECHEC);
-            $resume = "Échec total : aucun produit importé, {$totalErreurs} erreur(s).";
-            $actionResult = 'echec';
-
-        } elseif ($totalErreurs > 0) {
-            // PARTIEL : il y a des erreurs (produits ignorés) ET des produits importés ou mis à jour
-            $historique->setStatut(HistoriqueImportation::STATUT_PARTIEL);
-            $resume = "{$compteurs['crees']} créé(s), {$compteurs['mis_a_jour']} mis à jour, "
-                    . "{$compteurs['deja_existe']} déjà existant(s), {$totalErreurs} erreur(s).";
-            $actionResult = 'partiel';
-
-        } elseif (!empty($journalAvertissements)) {
-            // SUCCES AVEC AVERTISSEMENTS (non bloquants) → NOUVEAU STATUT !
-            $historique->setStatut(HistoriqueImportation::STATUT_SUCCES_AVEC_WARNINGS);
-            $resume = "{$compteurs['crees']} produit(s) créé(s) avec succès (avec avertissements non bloquants).";
-            $actionResult = 'succes_avec_warnings';
-
-        } else {
-            // SUCCES TOTAL : aucun avertissement, aucune erreur
-            $historique->setStatut(HistoriqueImportation::STATUT_SUCCES);
-            $resume = "{$compteurs['crees']} produit(s) créé(s) avec succès.";
-            $actionResult = 'succes';
-        }
-
-        $historique->setMessageResume($resume);
-        $em->flush();
-
-        // ── 7. Réponse JSON ───────────────────────────────────────────
+    $file = $request->files->get('importFile');
+    if (!$file) {
         return new JsonResponse([
-            'action'         => $actionResult,
-            'message'        => $resume,
-            'compteurs'      => $compteurs,
-            'avertissements' => $journalAvertissements,
-            'erreurs'        => $journalErreurs,
-            'totalImportes'  => $totalImportes,
-            'totalErreurs'   => $totalErreurs,
+            'action'  => 'erreur',
+            'message' => 'Aucun fichier reçu.',
+        ], 400);
+    }
+
+    $extension    = strtolower($file->getClientOriginalExtension());
+    $originalName = $file->getClientOriginalName();
+
+    // ── 1. Parser le fichier ──────────────────────────────────────
+    try {
+        $rows = match ($extension) {
+            'json'        => $this->parseJson($file->getPathname()),
+            'csv'         => $this->parseCsv($file->getPathname()),
+            'xlsx', 'xls' => $this->parseExcel($file->getPathname()),
+            default       => throw new \InvalidArgumentException(
+                "Format « .{$extension} » non supporté. Utilisez JSON, CSV, XLSX ou XLS."
+            ),
+        };
+    } catch (\Throwable $e) {
+        $this->creerHistoriqueEchec($em, $originalName, $extension, $e->getMessage());
+        return new JsonResponse([
+            'action'  => 'erreur',
+            'message' => $e->getMessage(),
+        ], 422);
+    }
+
+    if (empty($rows)) {
+        $this->creerHistoriqueEchec($em, $originalName, $extension, 'Le fichier est vide ou ne contient aucune ligne valide.');
+        return new JsonResponse([
+            'action'  => 'erreur',
+            'message' => 'Le fichier est vide ou ne contient aucune ligne valide.',
+        ], 422);
+    }
+
+    $fixFormat = (bool) $request->request->get('fixFormat', false);
+    $problemesFormat = $this->detecterCaracteristiquesIncompatibles($rows);
+
+    if (!empty($problemesFormat) && !$fixFormat) {
+        return new JsonResponse([
+            'action'  => 'format_incompatible',
+            'lignes'  => $problemesFormat,
+            'message' => count($problemesFormat) === 1
+                ? '1 ligne utilise des virgules/points-virgules dans les caractéristiques (non autorisé).'
+                : count($problemesFormat) . ' lignes utilisent des virgules/points-virgules dans les caractéristiques (non autorisé).',
         ]);
     }
+
+    // ── 2. Détecter les catégories inconnues ─────────────────────
+    $categoriesConnues   = $this->chargerCategoriesIndexees($em);
+    $categoriesInconnues = $this->detecterCategoriesInconnues($rows, $categoriesConnues);
+
+    $skipCategories = (bool) $request->request->get('skipCategories', false);
+
+    if (!empty($categoriesInconnues) && !$skipCategories) {
+        return new JsonResponse([
+            'action'              => 'categories_manquantes',
+            'categoriesInconnues' => array_values($categoriesInconnues),
+            'message'             => count($categoriesInconnues) === 1
+                ? "La catégorie « " . reset($categoriesInconnues) . " » n'existe pas dans le système."
+                : count($categoriesInconnues) . ' catégorie(s) inconnue(s) détectée(s) dans le fichier.',
+        ]);
+    }
+
+    // ── 3. Créer l'historique EN COURS ───────────────────────────
+    $user       = $this->getUser();
+    $historique = new HistoriqueImportation();
+    $historique->setNomFichier($originalName);
+    $historique->setFormatFichier($extension);
+    $historique->setUser($user);
+    $historique->setNombreLignes(count($rows));
+    $historique->setStatut(HistoriqueImportation::STATUT_EN_COURS);
+    $em->persist($historique);
+    $em->flush();
+
+    // ── Sauvegarde du fichier importé (backup) ──────────────────────
+    // Le nom du fichier est: {importId}_{nomFichier}
+    $backupFilename = $backupService->saveBackup($file, $historique->getId());
+    error_log('Backup créé: ' . $backupFilename);
+
+    // ── 4. Traiter chaque ligne ───────────────────────────────────
+    $compteurs = [
+        'crees'       => 0,
+        'mis_a_jour'  => 0,
+        'deja_existe' => 0,
+        'erreurs'     => 0,
+    ];
+    $journalErreurs        = [];
+    $journalAvertissements = [];
+
+    $categoriesConnues = $this->chargerCategoriesIndexees($em);
+
+    foreach ($rows as $lineIndex => $row) {
+        $lineNum = $lineIndex + 1;
+        $sku     = trim($row['sku'] ?? '');
+        $nom     = trim($row['nom'] ?? '');
+        $catNom  = trim($row['categorie'] ?? $row['catégorie'] ?? '');
+
+        // ── Validation obligatoire : SKU + Nom ────────────────────
+        if ($sku === '' || $nom === '') {
+            $msg = $sku === ''
+                ? 'SKU manquant — ligne ignorée.'
+                : 'Nom du produit manquant — ligne ignorée.';
+            $journalErreurs[] = ['ligne' => $lineNum, 'sku' => $sku ?: '—', 'erreur' => $msg];
+            $compteurs['erreurs']++;
+            continue;
+        }
+
+        // ── Catégorie inconnue + skipCategories=true ──────────────
+        if ($catNom !== '' && !isset($categoriesConnues[mb_strtolower($catNom)]) && $skipCategories) {
+            $journalErreurs[] = [
+                'ligne'  => $lineNum,
+                'sku'    => $sku,
+                'erreur' => "Catégorie « {$catNom} » introuvable — produit ignoré.",
+            ];
+            $compteurs['erreurs']++;
+            continue;
+        }
+
+        // ── Vérification URL image (NON BLOQUANTE - simple avertissement) ──
+        $imageUrl = trim($row['image_url'] ?? '');
+        if ($imageUrl !== '' && !$this->isUrlValide($imageUrl)) {
+            $journalAvertissements[] = [
+                'ligne'         => $lineNum,
+                'sku'           => $sku,
+                'avertissement' => "URL image invalide ou inaccessible — produit importé sans image.",
+            ];
+            $imageUrl = '';
+        }
+
+        // ── Description originale vide (NON BLOQUANTE) ────────────
+        $descOriginale = trim($row['description_originale'] ?? $row['description'] ?? '');
+        if ($descOriginale === '') {
+            $journalAvertissements[] = [
+                'ligne'         => $lineNum,
+                'sku'           => $sku,
+                'avertissement' => 'Description originale vide — produit importé sans description.',
+            ];
+        }
+
+        // ── Statut (défaut : inactif) ─────────────────────────────
+        $statutImport = strtolower(trim($row['statut'] ?? 'inactif'));
+        if (!in_array($statutImport, ['actif', 'inactif', 'rupture'])) {
+            $statutImport = 'inactif';
+        }
+
+        // ── Caractéristiques → liste normalisée ───────────────────
+        $caracteristiques = $this->normaliserCaracteristiques(
+            $row['caracteristiques'] ?? $row['caractéristiques'] ?? null,
+            $fixFormat
+        );
+
+        // ── Résolution catégorie ───────────────────────────────────
+        $categorieEntity = null;
+        if ($catNom !== '' && isset($categoriesConnues[mb_strtolower($catNom)])) {
+            $categorieEntity = $categoriesConnues[mb_strtolower($catNom)];
+        }
+
+        // ── Cherche si le produit existe déjà (par SKU) ───────────
+        $produitExistant = $em->getRepository(Produit::class)->findOneBy(['sku' => $sku]);
+
+        $descriptionGenereeFile = trim($row['description_generee'] ?? $row['description_générée'] ?? '');
+
+        try {
+            if ($produitExistant) {
+                // ── Produit déjà en base : ON MODIFIE TOUT ────────
+                $ancienStatut = $produitExistant->getStatut();
+                $produitExistant->setNom($nom);
+                $produitExistant->setStatut($statutImport);
+                $produitExistant->setCaracteristiques($caracteristiques);
+                $produitExistant->setDescriptionOriginale($descOriginale ?: null);
+                if ($imageUrl !== '') {
+                    $produitExistant->setImageUrl($imageUrl);
+                }
+                if ($categorieEntity) {
+                    $produitExistant->setCategorie($categorieEntity);
+                }
+                $produitExistant->setDateModification(new \DateTime());
+
+                if ($descriptionGenereeFile !== '') {
+                    $produitExistant->setDescriptionGeneree($descriptionGenereeFile);
+                } else {
+                    try {
+                        $resultatIA = $aiProviderManager->genererContenuIA($produitExistant, $aiProvider);
+                        $produitExistant->setDescriptionGeneree($resultatIA['description']);
+                        if ($resultatIA['imageUrl'] !== null) {
+                            $produitExistant->setImageUrl($resultatIA['imageUrl']);
+                        }
+                        if ($resultatIA['fallback']) {
+                            $journalAvertissements[] = [
+                                'ligne' => $lineNum, 'sku' => $sku,
+                                'avertissement' => "Génération IA via {$resultatIA['provider']} (bascule automatique).",
+                            ];
+                        }
+                    } catch (\Throwable $e) {
+                        $journalAvertissements[] = [
+                            'ligne' => $lineNum, 'sku' => $sku,
+                            'avertissement' => 'Génération IA indisponible pour ce produit.',
+                        ];
+                    }
+                }
+
+                $journalAvertissements[] = [
+                    'ligne'         => $lineNum,
+                    'sku'           => $sku,
+                    'avertissement' => "Mise à jour : statut changé de « {$ancienStatut} » → « {$statutImport} ».",
+                ];
+                $compteurs['mis_a_jour']++;
+
+            } else {
+                // ── Nouveau produit ───────────────────────────────
+                $produit = new Produit();
+                $produit->setSku($sku);
+                $produit->setNom($nom);
+                $produit->setStatut($statutImport);
+                $produit->setCaracteristiques($caracteristiques);
+                $produit->setDescriptionOriginale($descOriginale ?: null);
+                $produit->setImageUrl($imageUrl ?: null);
+                $produit->setUtilisateur($user);
+                if ($categorieEntity) {
+                    $produit->setCategorie($categorieEntity);
+                }
+
+                if ($descriptionGenereeFile !== '') {
+                    $produit->setDescriptionGeneree($descriptionGenereeFile);
+                } else {
+                    try {
+                        $resultatIA = $aiProviderManager->genererContenuIA($produit, $aiProvider);
+                        $produit->setDescriptionGeneree($resultatIA['description']);
+                        if ($resultatIA['imageUrl'] !== null) {
+                            $produit->setImageUrl($resultatIA['imageUrl']);
+                        }
+                        if ($resultatIA['fallback']) {
+                            $journalAvertissements[] = [
+                                'ligne' => $lineNum, 'sku' => $sku,
+                                'avertissement' => "Génération IA via {$resultatIA['provider']} (bascule automatique).",
+                            ];
+                        }
+                    } catch (\Throwable $e) {
+                        $journalAvertissements[] = [
+                            'ligne' => $lineNum, 'sku' => $sku,
+                            'avertissement' => 'Génération IA indisponible pour ce produit.',
+                        ];
+                    }
+                }
+
+                $em->persist($produit);
+                $compteurs['crees']++;
+            }
+
+        } catch (\Throwable $e) {
+            $journalErreurs[] = [
+                'ligne'  => $lineNum,
+                'sku'    => $sku,
+                'erreur' => $e->getMessage(),
+            ];
+            $compteurs['erreurs']++;
+        }
+    }
+
+    // ── 5. Flush ──────────────────────────────────────────────────
+    $em->flush();
+
+    // ── 6. Finaliser l'historique ─────────────────────────────────
+    $totalImportes = $compteurs['crees'] + $compteurs['mis_a_jour'];
+    $totalErreurs  = $compteurs['erreurs'];
+
+    $historique->setNombreImportes($totalImportes);
+    $historique->setNombreErreurs($totalErreurs);
+
+    // Fusionne erreurs + avertissements, triés par numéro de ligne
+    $toutLesDetails = array_merge(
+        array_map(fn($e) => array_merge($e, ['type' => 'erreur']), $journalErreurs),
+        array_map(fn($a) => [
+            'ligne'  => $a['ligne'],
+            'sku'    => $a['sku'],
+            'erreur' => $a['avertissement'],
+            'type'   => 'avertissement',
+        ], $journalAvertissements)
+    );
+    usort($toutLesDetails, fn($a, $b) => $a['ligne'] <=> $b['ligne']);
+    $historique->setDetailErreurs(
+        $toutLesDetails ? json_encode($toutLesDetails, JSON_UNESCAPED_UNICODE) : null
+    );
+
+    // Statut final de l'historique
+    if ($totalImportes === 0 && $totalErreurs === 0 && $compteurs['deja_existe'] > 0) {
+        $historique->setStatut(HistoriqueImportation::STATUT_SUCCES);
+        $resume = "Tous les produits existaient déjà — aucune modification.";
+        $actionResult = 'deja_existe';
+
+    } elseif ($totalImportes === 0 && $totalErreurs > 0) {
+        $historique->setStatut(HistoriqueImportation::STATUT_ECHEC);
+        $resume = "Échec total : aucun produit importé, {$totalErreurs} erreur(s).";
+        $actionResult = 'echec';
+
+    } elseif ($totalErreurs > 0) {
+        $historique->setStatut(HistoriqueImportation::STATUT_PARTIEL);
+        $resume = "{$compteurs['crees']} créé(s), {$compteurs['mis_a_jour']} mis à jour, "
+                . "{$compteurs['deja_existe']} déjà existant(s), {$totalErreurs} erreur(s).";
+        $actionResult = 'partiel';
+
+    } elseif (!empty($journalAvertissements)) {
+        $historique->setStatut(HistoriqueImportation::STATUT_SUCCES_AVEC_WARNINGS);
+        $resume = "{$compteurs['crees']} produit(s) créé(s) avec succès (avec avertissements non bloquants).";
+        $actionResult = 'succes_avec_warnings';
+
+    } else {
+        $historique->setStatut(HistoriqueImportation::STATUT_SUCCES);
+        $resume = "{$compteurs['crees']} produit(s) créé(s) avec succès.";
+        $actionResult = 'succes';
+    }
+
+    $historique->setMessageResume($resume);
+    $em->flush();
+
+    return new JsonResponse([
+        'action'         => $actionResult,
+        'message'        => $resume,
+        'compteurs'      => $compteurs,
+        'avertissements' => $journalAvertissements,
+        'erreurs'        => $journalErreurs,
+        'totalImportes'  => $totalImportes,
+        'totalErreurs'   => $totalErreurs,
+    ]);
+}
 
     // ══════════════════════════════════════════════════════════════════
     //  TEMPLATE D'IMPORT (téléchargeable)
@@ -422,7 +434,6 @@ class ProduitController extends AbstractController
             $handle = fopen('php://output', 'w');
             fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
             fputcsv($handle, $headers, ';');
-
             fclose($handle);
         });
         $response->headers->set('Content-Type', 'text/csv; charset=UTF-8');
@@ -436,7 +447,6 @@ class ProduitController extends AbstractController
             $handle = fopen('php://output', 'w');
             fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
             fputcsv($handle, $headers, "\t");
-            
             fclose($handle);
         });
         $response->headers->set('Content-Type', 'application/vnd.ms-excel; charset=UTF-8');
@@ -874,6 +884,41 @@ class ProduitController extends AbstractController
             'pdf'   => $this->exportPdf($produits),
             default => $this->exportCsv($produits),
         };
+    }
+
+    #[Route('/export/preview', name: 'app_produit_export_preview', methods: ['GET'])]
+    public function exportPreview(EntityManagerInterface $em, Request $request): JsonResponse
+    {
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
+
+        $statut      = $request->query->get('statut', '');
+        $categorieId = $request->query->get('categorie', '');
+        $search      = $request->query->get('search', '');
+
+        $qb = $em->getRepository(Produit::class)
+            ->createQueryBuilder('p')
+            ->leftJoin('p.categorie', 'c')
+            ->leftJoin('p.utilisateur', 'u')
+            ->orderBy('p.dateCreation', 'DESC');
+
+        if ($statut)      $qb->andWhere('p.statut = :statut')->setParameter('statut', $statut);
+        if ($categorieId) $qb->andWhere('c.id = :cat')->setParameter('cat', $categorieId);
+        if ($search)      $qb->andWhere('p.nom LIKE :s OR p.sku LIKE :s')->setParameter('s', '%' . $search . '%');
+
+        $produits = $qb->getQuery()->getResult();
+
+        $data = array_map(fn(Produit $p) => [
+            'sku'        => $p->getSku(),
+            'nom'        => $p->getNom(),
+            'categorie'  => $p->getCategorie()?->getNom() ?? '-',
+            'statut'     => $p->getStatut(),
+            'date_creation' => $p->getDateCreation()?->format('d/m/Y') ?? '-',
+        ], $produits);
+
+        return new JsonResponse([
+            'total' => count($data),
+            'produits' => $data,
+        ]);
     }
 
     private function exportCsv(array $produits): StreamedResponse

@@ -27,4 +27,6 @@ services:
         arguments:
             $apiKey: '%env(GROQ_API_KEY)%'
             $uploadDir: '%kernel.project_dir%/public/uploads/produits'
-
+    App\Service\ImportBackupService:
+        arguments:
+            $projectDir: '%kernel.project_dir%'

@@ -36,33 +36,42 @@
             </p>
         </div>
 
-        <!-- BOUTON NOUVEAU PRODUIT (split) -->
-        <div class="nova-split-btn" id="newProductBtn">
-            <div class="nova-split-main" onclick="window.location.href='{{ path('app_produit_new') }}'">
-                <i class="fas fa-plus"></i>
-                <span>Nouveau produit</span>
-            </div>
-            <div class="nova-split-arrow" onclick="toggleMenu('newProductMenu')">
-                <i class="fas fa-chevron-down"></i>
-            </div>
-            <div class="nova-split-menu" id="newProductMenu">
-                <div class="nova-split-menu-item" onclick="window.location.href='{{ path('app_produit_new') }}'">
-                    <div class="nova-split-menu-icon" style="background:rgba(0,255,163,0.12);">
-                        <i class="fas fa-pen" style="color:var(--emerald);"></i>
-                    </div>
-                    <div>
-                        <div class="nova-split-menu-label">Saisie manuelle</div>
-                        <div class="nova-split-menu-desc">Créer un produit via le formulaire</div>
-                    </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <!-- BOUTON EXPORT -->
+            <button class="btn px-4 py-2 fw-semibold"
+                    onclick="openExportModal()"
+                    style="background:rgba(100,180,255,0.12);color:#64b4ff;border:1.5px solid rgba(100,180,255,0.3);border-radius:12px;">
+                <i class="fas fa-file-export me-2"></i> Exporter
+            </button>
+
+            <!-- BOUTON NOUVEAU PRODUIT (split) -->
+            <div class="nova-split-btn" id="newProductBtn">
+                <div class="nova-split-main" onclick="window.location.href='{{ path('app_produit_new') }}'">
+                    <i class="fas fa-plus"></i>
+                    <span>Nouveau produit</span>
                 </div>
-                <div class="nova-split-menu-divider"></div>
-                <div class="nova-split-menu-item" onclick="openImportModal()">
-                    <div class="nova-split-menu-icon" style="background:rgba(100,180,255,0.12);">
-                        <i class="fas fa-file-import" style="color:#64b4ff;"></i>
+                <div class="nova-split-arrow" onclick="toggleMenu('newProductMenu')">
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="nova-split-menu" id="newProductMenu">
+                    <div class="nova-split-menu-item" onclick="window.location.href='{{ path('app_produit_new') }}'">
+                        <div class="nova-split-menu-icon" style="background:rgba(0,255,163,0.12);">
+                            <i class="fas fa-pen" style="color:var(--emerald);"></i>
+                        </div>
+                        <div>
+                            <div class="nova-split-menu-label">Saisie manuelle</div>
+                            <div class="nova-split-menu-desc">Créer un produit via le formulaire</div>
+                        </div>
                     </div>
-                    <div>
-                        <div class="nova-split-menu-label">Importer une liste</div>
-                        <div class="nova-split-menu-desc">CSV, Excel ou JSON</div>
+                    <div class="nova-split-menu-divider"></div>
+                    <div class="nova-split-menu-item" onclick="openImportModal()">
+                        <div class="nova-split-menu-icon" style="background:rgba(100,180,255,0.12);">
+                            <i class="fas fa-file-import" style="color:#64b4ff;"></i>
+                        </div>
+                        <div>
+                            <div class="nova-split-menu-label">Importer une liste</div>
+                            <div class="nova-split-menu-desc">CSV, Excel ou JSON</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -323,96 +332,169 @@
     </p>
     {% endif %}
 
-    <!-- SECTION EXPORT -->
-    <div class="card border-0 shadow-sm rounded-4 mt-4"
-         style="background:var(--card-bg-light);border:1px solid var(--border-color);">
-        <div class="card-body p-4">
+</div>
 
-            <h6 class="fw-bold mb-3" style="color:var(--text-primary);">
-                <i class="fas fa-file-export me-2" style="color:var(--emerald);"></i>
-                Exporter les produits
-            </h6>
+<!-- ═══════════════════════════════════
+     MODAL EXPORT
+═══════════════════════════════════ -->
+<div class="modal fade" id="exportModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content rounded-4 border-0"
+             style="background:var(--card-bg-light);border:1px solid var(--border-color) !important;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold" style="color:var(--text-primary);">
+                    <i class="fas fa-file-export me-2" style="color:#64b4ff;"></i>
+                    Exporter les produits
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"
+                        style="filter:invert(1);opacity:0.5;"></button>
+            </div>
+            <div class="modal-body pt-3">
 
-            <div class="row g-3 align-items-end">
+                <!-- Filtres d'export -->
+                <div class="row g-3 mb-4">
+                    <div class="col-12 col-md-3">
+                        <label class="form-label small fw-semibold" style="color:var(--text-secondary);">
+                            <i class="fas fa-toggle-on me-1"></i> Statut
+                        </label>
+                        <select id="exportStatut" class="form-select"
+                                style="background:var(--bg-body);border-color:var(--border-color);
+                                       color:var(--text-primary);border-radius:10px;">
+                            <option value="">Tous les statuts</option>
+                            <option value="actif">Actif</option>
+                            <option value="inactif">Inactif</option>
+                            <option value="rupture">Rupture</option>
+                        </select>
+                    </div>
 
-                <div class="col-12 col-md-3">
-                    <label class="form-label small fw-semibold" style="color:var(--text-secondary);">
-                        <i class="fas fa-toggle-on me-1"></i> Statut
-                    </label>
-                    <select id="exportStatut" class="form-select"
-                            style="background:var(--bg-body);border-color:var(--border-color);
-                                   color:var(--text-primary);border-radius:10px;">
-                        <option value="">Tous les statuts</option>
-                        <option value="actif">Actif</option>
-                        <option value="inactif">Inactif</option>
-                        <option value="rupture">Rupture</option>
-                    </select>
+                    <div class="col-12 col-md-3">
+                        <label class="form-label small fw-semibold" style="color:var(--text-secondary);">
+                            <i class="fas fa-tags me-1"></i> Catégorie
+                        </label>
+                        <select id="exportCategorie" class="form-select"
+                                style="background:var(--bg-body);border-color:var(--border-color);
+                                       color:var(--text-primary);border-radius:10px;">
+                            <option value="">Toutes les catégories</option>
+                            {% for cat in categories %}
+                                <option value="{{ cat.id }}">{{ cat.nom }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-12 col-md-4">
+                        <label class="form-label small fw-semibold" style="color:var(--text-secondary);">
+                            <i class="fas fa-search me-1"></i> Recherche
+                        </label>
+                        <input type="text" id="exportSearch" class="form-control"
+                               placeholder="Filtrer par nom ou SKU..."
+                               style="background:var(--bg-body);border-color:var(--border-color);
+                                      color:var(--text-primary);border-radius:10px;">
+                    </div>
+
+                    <div class="col-12 col-md-2 d-flex align-items-end">
+                        <div class="w-100 text-center" style="color:var(--text-secondary);font-size:0.75rem;">
+                            <i class="fas fa-sync-alt fa-fw me-1" style="color:#64b4ff;"></i>
+                            Mise à jour automatique
+                        </div>
+                    </div>
                 </div>
 
-                <div class="col-12 col-md-3">
-                    <label class="form-label small fw-semibold" style="color:var(--text-secondary);">
-                        <i class="fas fa-tags me-1"></i> Catégorie
-                    </label>
-                    <select id="exportCategorie" class="form-select"
-                            style="background:var(--bg-body);border-color:var(--border-color);
-                                   color:var(--text-primary);border-radius:10px;">
-                        <option value="">Toutes les catégories</option>
-                        {% for cat in categories %}
-                            <option value="{{ cat.id }}">{{ cat.nom }}</option>
-                        {% endfor %}
-                    </select>
+                <!-- Résumé des filtres -->
+                <div id="exportFiltersSummary" class="small mb-3" style="color:var(--text-secondary);display:none;">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Filtres actifs : <span id="exportFiltersText"></span>
                 </div>
 
-                <div class="col-12 col-md-3">
-                    <label class="form-label small fw-semibold" style="color:var(--text-secondary);">
-                        <i class="fas fa-search me-1"></i> Nom / SKU
-                    </label>
-                    <input type="text" id="exportSearch" class="form-control"
-                           placeholder="Filtrer par nom ou SKU..."
-                           style="background:var(--bg-body);border-color:var(--border-color);
-                                  color:var(--text-primary);border-radius:10px;">
+                <!-- Résultats de la prévisualisation -->
+                <div id="exportPreviewContainer">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="small fw-semibold" style="color:var(--text-primary);">
+                            <i class="fas fa-list me-1"></i> Produits à exporter
+                            <span id="exportCount" class="badge rounded-pill ms-2"
+                                  style="background:var(--emerald);color:#0b1329;">0</span>
+                        </span>
+                        <span class="small" style="color:var(--text-secondary);">
+                            <i class="fas fa-info-circle me-1"></i>
+                            <span id="exportTotalDisplay"></span>
+                        </span>
+                    </div>
+                    <div class="table-responsive" style="max-height:300px;overflow-y:auto;">
+                        <table class="table table-sm table-hover" style="color:var(--text-primary);font-size:0.85rem;">
+                            <thead style="position:sticky;top:0;background:var(--bg-body);z-index:10;">
+                                <tr>
+                                    <th style="width:15%;">SKU</th>
+                                    <th style="width:35%;">Nom</th>
+                                    <th style="width:20%;">Catégorie</th>
+                                    <th style="width:15%;">Statut</th>
+                                    <th style="width:15%;">Date</th>
+                                </tr>
+                            </thead>
+                            <tbody id="exportPreviewBody">
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="exportLoading" class="text-center py-3" style="color:var(--text-secondary);">
+                        <i class="fas fa-spinner fa-spin me-2"></i> Chargement...
+                    </div>
+                    <div id="exportNoResult" class="text-center py-3" style="color:var(--text-secondary);display:none;">
+                        <i class="fas fa-search fa-2x d-block mb-2" style="opacity:0.4;"></i>
+                        <p class="mb-0">Aucun produit ne correspond à ces critères.</p>
+                    </div>
                 </div>
 
-                <div class="col-12 col-md-3">
-                    <label class="form-label small fw-semibold" style="color:var(--text-secondary);">
-                        <i class="fas fa-download me-1"></i> Format d'export
-                    </label>
-
-                    <div class="uiverse-orbit-container" id="uiverseOrbitContainer">
-                        <div class="orbit-icon orbit-icon-1" onclick="selectExportFormat('csv','CSV','#00ffa3')" title="CSV">
-                            <i class="fas fa-file-csv"></i>
-                            <span class="orbit-label">CSV</span>
+                <!-- Choix du format et bouton de téléchargement -->
+                <div class="mt-4 pt-3" style="border-top:1px solid var(--border-color);">
+                    <div class="row g-3 align-items-center">
+                        <div class="col-12 col-md-6">
+                            <label class="form-label small fw-semibold" style="color:var(--text-secondary);">
+                                <i class="fas fa-download me-1"></i> Format d'export
+                            </label>
+                            <div class="d-flex gap-2 flex-wrap">
+                                <button type="button" class="btn btn-sm export-format-btn "
+                                        data-format="csv"
+                                          style="background:transparent;color:var(--text-secondary);
+                                               border:1.5px solid var(--border-color);border-radius:8px;padding:0.4rem 1rem;">
+                                    <i class="fas fa-file-csv"></i> CSV
+                                </button>
+                                <button type="button" class="btn btn-sm export-format-btn"
+                                        data-format="excel"
+                                        style="background:transparent;color:var(--text-secondary);
+                                               border:1.5px solid var(--border-color);border-radius:8px;padding:0.4rem 1rem;">
+                                    <i class="fas fa-file-excel"></i> Excel
+                                </button>
+                                <button type="button" class="btn btn-sm export-format-btn"
+                                        data-format="json"
+                                        style="background:transparent;color:var(--text-secondary);
+                                               border:1.5px solid var(--border-color);border-radius:8px;padding:0.4rem 1rem;">
+                                    <i class="fas fa-file-code"></i> JSON
+                                </button>
+                                <button type="button" class="btn btn-sm export-format-btn"
+                                        data-format="pdf"
+                                        style="background:transparent;color:var(--text-secondary);
+                                               border:1.5px solid var(--border-color);border-radius:8px;padding:0.4rem 1rem;">
+                                    <i class="fas fa-file-pdf"></i> PDF
+                                </button>
+                            </div>
                         </div>
-                        <div class="orbit-icon orbit-icon-2" onclick="selectExportFormat('excel','Excel','#1d6f42')" title="Excel">
-                            <i class="fas fa-file-excel"></i>
-                            <span class="orbit-label">Excel</span>
-                        </div>
-                        <div class="orbit-icon orbit-icon-3" onclick="selectExportFormat('json','JSON','#f0a500')" title="JSON">
-                            <i class="fas fa-file-code"></i>
-                            <span class="orbit-label">JSON</span>
-                        </div>
-                        <div class="orbit-icon orbit-icon-4" onclick="selectExportFormat('pdf','PDF','#dc3545')" title="PDF">
-                            <i class="fas fa-file-pdf"></i>
-                            <span class="orbit-label">PDF</span>
-                        </div>
-                        <div class="orbit-center-btn" id="exportOrbitBtn">
-                            <i class="fas fa-download"></i>
-                            <span>Télécharger</span>
-                            <span id="orbitFormatDisplay" style="font-size:0.5rem;opacity:0.7;display:block;font-weight:400;margin-top:1px;">CSV</span>
+                        <div class="col-12 col-md-6 text-md-end">
+                            <button type="button" id="downloadExportBtn" class="btn px-4 py-2 fw-semibold"
+                                    style="background:var(--emerald);color:#0b1329;border:none;border-radius:10px;"
+                                    disabled>
+                                <i class="fas fa-download me-1"></i> Télécharger
+                            </button>
+                            <button type="button" class="btn px-4 py-2 ms-2"
+                                    data-bs-dismiss="modal"
+                                    style="background:transparent;border:1.5px solid var(--border-color);
+                                           color:var(--text-secondary);border-radius:10px;">
+                                Fermer
+                            </button>
                         </div>
                     </div>
                 </div>
 
             </div>
-
-            <small class="d-block mt-3" style="color:var(--text-secondary);">
-                <i class="fas fa-info-circle me-1"></i>
-                Laissez les filtres vides pour exporter <strong>tous les produits</strong>.
-                <strong>Survolez</strong> le bouton pour choisir le format, puis cliquez sur "Télécharger".
-            </small>
         </div>
     </div>
-
 </div>
 
 <!-- ═══════════════════════════════════
@@ -675,54 +757,6 @@
     .nova-split-menu-desc  { font-size: 0.75rem; color: var(--text-secondary); line-height: 1.3; }
     .nova-split-menu-divider { height: 1px; background: var(--border-color); margin: 4px 0; opacity: 0.5; }
 
-    /* UIVERSE ORBIT */
-    .uiverse-orbit-container {
-        position: relative; display: flex; align-items: center; justify-content: center;
-        width: 100%; max-width: 220px; min-height: 100px; margin: 0 auto; padding: 5px;
-    }
-    .orbit-center-btn {
-        position: relative; z-index: 3;
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        gap: 1px; padding: 0.4rem 1rem; border-radius: 50px;
-        background: var(--emerald); color: #0b1329; font-weight: 600; font-size: 0.7rem;
-        border: none; transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-        cursor: pointer; user-select: none; min-width: 100px;
-        box-shadow: 0 3px 12px rgba(0,255,163,0.2); line-height: 1.3;
-    }
-    .orbit-center-btn:hover { background: #00cc82; transform: scale(1.05); box-shadow: 0 4px 18px rgba(0,255,163,0.3); }
-    .orbit-center-btn i { font-size: 0.85rem; }
-    .orbit-center-btn span { font-size: 0.7rem; }
-    .orbit-icon {
-        position: absolute; z-index: 2;
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        width: 38px; height: 38px; border-radius: 50%;
-        background: var(--card-bg-light); border: 1.5px solid var(--border-color);
-        cursor: pointer; transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-        opacity: 0; transform: scale(0.5); pointer-events: none;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    }
-    .orbit-icon i { font-size: 0.85rem; color: var(--text-secondary); transition: color 0.3s ease; }
-    .orbit-label { font-size: 0.4rem; font-weight: 600; color: var(--text-secondary); margin-top: 1px; transition: color 0.3s ease; text-transform: uppercase; letter-spacing: 0.05em; }
-    .orbit-icon-1 { top: -2px; left: 50%; transform: translateX(-50%) scale(0.5); }
-    .orbit-icon-2 { top: 50%; right: -8px; transform: translateY(-50%) scale(0.5); }
-    .orbit-icon-3 { bottom: -2px; left: 50%; transform: translateX(-50%) scale(0.5); }
-    .orbit-icon-4 { top: 50%; left: -8px; transform: translateY(-50%) scale(0.5); }
-    .uiverse-orbit-container:hover .orbit-icon { opacity: 1; pointer-events: all; }
-    .uiverse-orbit-container:hover .orbit-icon-1 { transform: translateX(-50%) scale(1) translateY(-16px); }
-    .uiverse-orbit-container:hover .orbit-icon-2 { transform: translateY(-50%) scale(1) translateX(16px); }
-    .uiverse-orbit-container:hover .orbit-icon-3 { transform: translateX(-50%) scale(1) translateY(16px); }
-    .uiverse-orbit-container:hover .orbit-icon-4 { transform: translateY(-50%) scale(1) translateX(-16px); }
-    .orbit-icon:hover { transform: scale(1.15) !important; border-color: var(--emerald); box-shadow: 0 3px 15px rgba(0,255,163,0.15); }
-    .orbit-icon:hover i { color: var(--emerald); }
-    .orbit-icon:hover .orbit-label { color: var(--emerald); }
-    .orbit-icon-1:hover { border-color: #00ffa3; } .orbit-icon-1:hover i { color: #00ffa3; } .orbit-icon-1:hover .orbit-label { color: #00ffa3; }
-    .orbit-icon-2:hover { border-color: #1d6f42; } .orbit-icon-2:hover i { color: #1d6f42; } .orbit-icon-2:hover .orbit-label { color: #1d6f42; }
-    .orbit-icon-3:hover { border-color: #f0a500; } .orbit-icon-3:hover i { color: #f0a500; } .orbit-icon-3:hover .orbit-label { color: #f0a500; }
-    .orbit-icon-4:hover { border-color: #dc3545; } .orbit-icon-4:hover i { color: #dc3545; } .orbit-icon-4:hover .orbit-label { color: #dc3545; }
-    .orbit-icon.active { border-color: var(--emerald); background: rgba(0,255,163,0.1); box-shadow: 0 0 0 2px rgba(0,255,163,0.2); }
-    .orbit-icon.active i { color: var(--emerald); opacity: 1; }
-    .orbit-icon.active .orbit-label { color: var(--emerald); }
-
     /* RÈGLES D'IMPORT */
     .import-rules-box {
         border: 1px solid var(--border-color);
@@ -828,6 +862,18 @@
         border-color: var(--emerald) !important;
         box-shadow: 0 0 0 0.2rem rgba(0,255,163,0.15) !important;
     }
+
+    /* EXPORT MODAL */
+    .export-format-btn.active {
+        background: rgba(0,255,163,0.1) !important;
+        color: var(--emerald) !important;
+        border-color: var(--emerald) !important;
+    }
+    .export-format-btn:hover:not(.active) {
+        background: rgba(255,255,255,0.05);
+        border-color: var(--text-secondary);
+    }
+
     .swal2-popup { border-radius: 16px !important; border: 1px solid var(--border-color) !important; background: var(--card-bg-light) !important; }
     .swal2-title { color: var(--text-primary) !important; }
     .swal2-html-container { color: var(--text-secondary) !important; }
@@ -837,18 +883,8 @@
     #importDropZone:hover { border-color: var(--emerald) !important; background: rgba(0,255,163,0.04); }
 
     @media (max-width: 768px) {
-        .uiverse-orbit-container { min-height: 80px; max-width: 180px; }
-        .orbit-center-btn { min-width: 80px; padding: 0.35rem 0.8rem; font-size: 0.6rem; }
-        .orbit-center-btn i { font-size: 0.7rem; }
-        .orbit-center-btn span { font-size: 0.6rem; }
-        .orbit-icon { width: 32px; height: 32px; }
-        .orbit-icon i { font-size: 0.7rem; }
-        .orbit-label { font-size: 0.35rem; }
-        .orbit-icon-1 { top: 0px; } .orbit-icon-2 { right: -5px; } .orbit-icon-3 { bottom: 0px; } .orbit-icon-4 { left: -5px; }
-        .uiverse-orbit-container:hover .orbit-icon-1 { transform: translateX(-50%) scale(1) translateY(-12px); }
-        .uiverse-orbit-container:hover .orbit-icon-2 { transform: translateY(-50%) scale(1) translateX(12px); }
-        .uiverse-orbit-container:hover .orbit-icon-3 { transform: translateX(-50%) scale(1) translateY(12px); }
-        .uiverse-orbit-container:hover .orbit-icon-4 { transform: translateY(-50%) scale(1) translateX(-12px); }
+        .nova-split-main { font-size: 0.8rem; padding: 0.4rem 0.8rem; }
+        .nova-split-arrow { width: 30px; }
     }
 </style>
 
@@ -984,84 +1020,193 @@ document.addEventListener('DOMContentLoaded', function () {
         toggle.classList.toggle('open');
     };
 
-    /* EXPORT ORBIT */
-    let currentExportFormat = 'csv';
+    /* ═══════════════════════════════════════════════════
+       EXPORT MODAL - AUTO PREVIEW
+    ═══════════════════════════════════════════════════════ */
+    let selectedExportFormat = 'csv';
+    let previewTimeout = null;
+    let isExportModalOpen = false;
 
-    window.selectExportFormat = function(format, label, color) {
-        currentExportFormat = format;
-        const displayEl = document.getElementById('orbitFormatDisplay');
-        if (displayEl) displayEl.textContent = label.toUpperCase();
+    window.openExportModal = function() {
+        // Réinitialiser les champs
+        document.getElementById('exportStatut').value = '';
+        document.getElementById('exportCategorie').value = '';
+        document.getElementById('exportSearch').value = '';
+        document.getElementById('exportFiltersSummary').style.display = 'none';
+        document.getElementById('downloadExportBtn').disabled = true;
+        document.getElementById('exportCount').textContent = '0';
+        document.getElementById('exportTotalDisplay').textContent = '';
+        document.getElementById('exportLoading').style.display = 'block';
+        document.getElementById('exportNoResult').style.display = 'none';
+        document.getElementById('exportPreviewBody').innerHTML = '';
 
-        document.querySelectorAll('.orbit-icon').forEach((icon, index) => {
-            icon.classList.toggle('active', ['csv','excel','json','pdf'][index] === format);
-        });
+        const modal = new bootstrap.Modal(document.getElementById('exportModal'));
+        modal.show();
+        isExportModalOpen = true;
 
-        const btn = document.getElementById('exportOrbitBtn');
-        if (btn) {
-            btn.style.background = color;
-            btn.style.color = format === 'pdf' ? 'white' : '#0b1329';
+        // Appliquer les filtres du tableau par défaut
+        const searchVal = document.getElementById('searchInput').value;
+        const catVal = document.getElementById('filterCategorie').value;
+        if (searchVal) document.getElementById('exportSearch').value = searchVal;
+        if (catVal) {
+            const catSelect = document.getElementById('exportCategorie');
+            for (let opt of catSelect.options) {
+                if (opt.text.toLowerCase() === catVal) {
+                    catSelect.value = opt.value;
+                    break;
+                }
+            }
         }
+
+        // Lancer la prévisualisation automatique
+        setTimeout(refreshPreview, 300);
+
+        // Écouter les changements sur les filtres
+        document.getElementById('exportStatut').addEventListener('change', refreshPreview);
+        document.getElementById('exportCategorie').addEventListener('change', refreshPreview);
+        document.getElementById('exportSearch').addEventListener('input', function() {
+            clearTimeout(previewTimeout);
+            previewTimeout = setTimeout(refreshPreview, 400);
+        });
     };
 
-    const orbitBtn = document.getElementById('exportOrbitBtn');
-    if (orbitBtn) {
-        orbitBtn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            const labels = { csv: 'CSV', excel: 'Excel', json: 'JSON', pdf: 'PDF' };
-            const colors = { csv: '#00ffa3', excel: '#1d6f42', json: '#f0a500', pdf: '#dc3545' };
-            triggerExport(currentExportFormat, labels[currentExportFormat], colors[currentExportFormat]);
-        });
-    }
+    // Événement de fermeture de la modale
+    document.getElementById('exportModal').addEventListener('hidden.bs.modal', function() {
+        isExportModalOpen = false;
+    });
 
-    function buildExportUrl(format) {
-        const params = new URLSearchParams({ format });
-        const statut    = document.getElementById('exportStatut').value;
+    // Gestion des boutons de format
+    document.querySelectorAll('.export-format-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.export-format-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            selectedExportFormat = this.dataset.format;
+        });
+    });
+
+    // Fonction de prévisualisation automatique
+    function refreshPreview() {
+        if (!isExportModalOpen) return;
+
+        const statut = document.getElementById('exportStatut').value;
         const categorie = document.getElementById('exportCategorie').value;
-        const search    = document.getElementById('exportSearch').value.trim();
-        if (statut)    params.append('statut', statut);
+        const search = document.getElementById('exportSearch').value.trim();
+
+        const params = new URLSearchParams();
+        if (statut) params.append('statut', statut);
         if (categorie) params.append('categorie', categorie);
-        if (search)    params.append('search', search);
-        return '{{ path("app_produit_export") }}?' + params.toString();
-    }
+        if (search) params.append('search', search);
 
-    function triggerExport(format, label, color) {
-        const statut    = document.getElementById('exportStatut').value;
-        const categorie = document.getElementById('exportCategorie').value;
-        const search    = document.getElementById('exportSearch').value.trim();
+        // Afficher le chargement
+        document.getElementById('exportLoading').style.display = 'block';
+        document.getElementById('exportNoResult').style.display = 'none';
+        document.getElementById('exportPreviewBody').innerHTML = '';
+        document.getElementById('downloadExportBtn').disabled = true;
 
-        const filterLabels = [];
-        if (statut)    filterLabels.push(`statut : <strong>${statut}</strong>`);
-        if (categorie) filterLabels.push(`catégorie sélectionnée`);
-        if (search)    filterLabels.push(`recherche : <strong>${search}</strong>`);
+        fetch('{{ path("app_produit_export_preview") }}?' + params.toString())
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('exportLoading').style.display = 'none';
 
-        const desc = filterLabels.length > 0
-            ? `Filtres : ${filterLabels.join(', ')}.`
-            : `<strong>Tous les produits</strong> seront exportés.`;
+            const body = document.getElementById('exportPreviewBody');
+            const noResult = document.getElementById('exportNoResult');
+            const countEl = document.getElementById('exportCount');
+            const totalDisplay = document.getElementById('exportTotalDisplay');
+            const filtersSummary = document.getElementById('exportFiltersSummary');
+            const filtersText = document.getElementById('exportFiltersText');
+            const downloadBtn = document.getElementById('downloadExportBtn');
 
-        const icons = { csv: '📄', excel: '📊', json: '🔧', pdf: '🖨️' };
-
-        Swal.fire({
-            title: `${icons[format] || '📁'} Exporter en ${label}`,
-            html: `<div style="text-align:left;padding:8px 0;"><p style="color:var(--text-secondary);">${desc}</p></div>`,
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: `<i class="fas fa-download me-1"></i> Télécharger ${label}`,
-            cancelButtonText: 'Annuler',
-            confirmButtonColor: color || '#00ffa3',
-            cancelButtonColor: '#6c757d',
-            background: getComputedStyle(document.documentElement).getPropertyValue('--card-bg-light').trim() || '#fff',
-            color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#1a2744',
-            customClass: {
-                popup: 'rounded-4',
-                confirmButton: 'btn fw-semibold px-4 py-2 rounded-pill',
-                cancelButton: 'btn btn-secondary px-4 py-2 rounded-pill'
+            // Afficher les filtres actifs
+            const filters = [];
+            if (statut) filters.push(`Statut: <strong>${statut}</strong>`);
+            if (categorie) {
+                const catLabel = document.querySelector('#exportCategorie option[value="' + categorie + '"]');
+                if (catLabel) filters.push(`Catégorie: <strong>${catLabel.text}</strong>`);
             }
-        }).then(result => {
-            if (result.isConfirmed) window.location.href = buildExportUrl(format);
+            if (search) filters.push(`Recherche: <strong>${search}</strong>`);
+
+            if (filters.length > 0) {
+                filtersSummary.style.display = 'block';
+                filtersText.innerHTML = filters.join(' • ');
+            } else {
+                filtersSummary.style.display = 'block';
+                filtersText.innerHTML = '<strong>Tous les produits</strong>';
+            }
+
+            body.innerHTML = '';
+            if (!data.produits || data.produits.length === 0) {
+                noResult.style.display = 'block';
+                countEl.textContent = '0';
+                totalDisplay.textContent = 'Aucun produit à exporter';
+                downloadBtn.disabled = true;
+                return;
+            }
+
+            noResult.style.display = 'none';
+            const produits = data.produits;
+            countEl.textContent = produits.length;
+            totalDisplay.textContent = `Total : ${produits.length} produit${produits.length > 1 ? 's' : ''}`;
+
+            produits.slice(0, 20).forEach(p => {
+                const tr = document.createElement('tr');
+                const statusColor = p.statut === 'actif' ? '#28a745' :
+                                   p.statut === 'rupture' ? '#dc3545' : '#6c757d';
+                tr.innerHTML = `
+                    <td><span style="font-family:monospace;color:var(--emerald);">${p.sku}</span></td>
+                    <td>${p.nom}</td>
+                    <td style="color:var(--text-secondary);">${p.categorie || '-'}</td>
+                    <td><span style="color:${statusColor};font-weight:600;">${p.statut}</span></td>
+                    <td style="color:var(--text-secondary);font-size:0.8rem;">${p.date_creation || '-'}</td>
+                `;
+                body.appendChild(tr);
+            });
+
+            if (produits.length > 20) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td colspan="5" style="color:var(--text-secondary);font-style:italic;text-align:center;">
+                    ... et ${produits.length - 20} autre${produits.length - 20 > 1 ? 's' : ''}
+                </td>`;
+                body.appendChild(tr);
+            }
+
+            downloadBtn.disabled = false;
+
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            document.getElementById('exportLoading').style.display = 'none';
+            document.getElementById('exportNoResult').style.display = 'block';
+            document.getElementById('exportNoResult').innerHTML = `
+                <i class="fas fa-exclamation-triangle fa-2x d-block mb-2" style="color:#dc3545;"></i>
+                <p class="mb-0" style="color:#dc3545;">Erreur de chargement des produits.</p>
+            `;
         });
     }
 
-    /* MODAL IMPORT */
+    // Téléchargement
+    document.getElementById('downloadExportBtn').addEventListener('click', function() {
+        const statut = document.getElementById('exportStatut').value;
+        const categorie = document.getElementById('exportCategorie').value;
+        const search = document.getElementById('exportSearch').value.trim();
+
+        const params = new URLSearchParams();
+        params.append('format', selectedExportFormat);
+        if (statut) params.append('statut', statut);
+        if (categorie) params.append('categorie', categorie);
+        if (search) params.append('search', search);
+
+        const url = '{{ path("app_produit_export") }}?' + params.toString();
+        window.location.href = url;
+
+        setTimeout(() => {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('exportModal'));
+            if (modal) modal.hide();
+        }, 500);
+    });
+
+    /* ═══════════════════════════════════════════════════
+       MODAL IMPORT
+    ═══════════════════════════════════════════════════════ */
     window.openImportModal = function() {
         document.getElementById('importForm').reset();
         document.getElementById('importFileName').style.display = 'none';
@@ -1550,8 +1695,6 @@ document.addEventListener('DOMContentLoaded', function () {
             submitBtn.style.opacity = '1';
         });
     }
-
-    selectExportFormat('csv', 'CSV', '#00ffa3');
 });
 </script>
 {% endblock %}
