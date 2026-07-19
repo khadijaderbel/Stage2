@@ -15,7 +15,7 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 class UserController extends AbstractController
 {
     // ══════════════════════════════════════════════
-    //  UTILISATEUR CONNECTÉ (remplace app.user en Twig)
+    //  UTILISATEUR CONNECTÉ
     // ══════════════════════════════════════════════
 
     #[Route('/users/me', name: 'api_users_me', methods: ['GET'])]
@@ -29,7 +29,25 @@ class UserController extends AbstractController
     }
 
     // ══════════════════════════════════════════════
-    //  LISTE + RECHERCHE (fusion de index() et search())
+    //  RÉCUPÉRER UN UTILISATEUR PAR ID
+    // ══════════════════════════════════════════════
+
+    #[Route('/users/{id}', name: 'api_users_show', methods: ['GET'])]
+    public function show(User $user): JsonResponse
+    {
+        $this->denyAccessUnlessGranted('ROLE_ADMIN');
+        
+        $currentUser = $this->getUser();
+        
+        if ($user->isSuperAdmin() && !$this->isGranted('ROLE_SUPER_ADMIN')) {
+            return new JsonResponse(['message' => 'Droits insuffisants pour voir ce profil.'], 403);
+        }
+
+        return new JsonResponse($this->serializeUser($user, $currentUser));
+    }
+
+    // ══════════════════════════════════════════════
+    //  LISTE + RECHERCHE
     // ══════════════════════════════════════════════
 
     #[Route('/users', name: 'api_users_list', methods: ['GET'])]
@@ -69,7 +87,7 @@ class UserController extends AbstractController
     }
 
     // ══════════════════════════════════════════════
-    //  INSCRIPTION (remplace /signup)
+    //  INSCRIPTION
     // ══════════════════════════════════════════════
 
     #[Route('/register', name: 'api_register', methods: ['POST'])]
@@ -158,22 +176,7 @@ class UserController extends AbstractController
     // ══════════════════════════════════════════════
     //  ACTIVER / DÉSACTIVER
     // ══════════════════════════════════════════════
-// Dans UserController
-#[Route('/test-login', name: 'api_test_login', methods: ['POST'])]
-public function testLogin(Request $request, EntityManagerInterface $em): JsonResponse
-{
-    $data = json_decode($request->getContent(), true);
-    $email = $data['email'] ?? $data['username'] ?? null;
-    $password = $data['password'] ?? null;
 
-    $user = $em->getRepository(User::class)->findOneBy(['email' => $email]);
-
-    return new JsonResponse([
-        'email_received' => $email,
-        'user_found' => $user ? true : false,
-        'password_hash_prefix' => $user ? substr($user->getPasswordHash(), 0, 10) : null,
-    ]);
-}
     #[Route('/users/{id}/toggle-status', name: 'api_users_toggle_status', methods: ['POST'])]
     public function toggleStatus(User $user, EntityManagerInterface $em): JsonResponse
     {
@@ -218,8 +221,7 @@ public function testLogin(Request $request, EntityManagerInterface $em): JsonRes
     }
 
     // ══════════════════════════════════════════════
-    //  PROFIL (version simplifiée : sans le code de vérification
-    //  email par Brevo, pour gagner du temps — à réintégrer plus tard)
+    //  PROFIL
     // ══════════════════════════════════════════════
 
     #[Route('/profile', name: 'api_profile_update', methods: ['PUT'])]
@@ -253,6 +255,30 @@ public function testLogin(Request $request, EntityManagerInterface $em): JsonRes
 
         return new JsonResponse(['success' => true, 'message' => 'Profil mis à jour.', 'user' => $this->serializeUser($user)]);
     }
+
+    // ══════════════════════════════════════════════
+    //  TEST LOGIN (à supprimer après)
+    // ══════════════════════════════════════════════
+
+    #[Route('/test-login', name: 'api_test_login', methods: ['POST'])]
+    public function testLogin(Request $request, EntityManagerInterface $em): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true);
+        $email = $data['email'] ?? $data['username'] ?? null;
+        $password = $data['password'] ?? null;
+
+        $user = $em->getRepository(User::class)->findOneBy(['email' => $email]);
+
+        return new JsonResponse([
+            'email_received' => $email,
+            'user_found' => $user ? true : false,
+            'password_hash_prefix' => $user ? substr($user->getPasswordHash(), 0, 10) : null,
+        ]);
+    }
+
+    // ══════════════════════════════════════════════
+    //  SERIALIZE
+    // ══════════════════════════════════════════════
 
     private function serializeUser(User $user, ?User $currentUser = null): array
     {
