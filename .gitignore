@@ -1,0 +1,15 @@
+# Dump SQL — contient des mots de passe hashés et des données réelles
+docker/mysql/init/*.sql
+
+# Config Docker locale (ports) — spécifique à chaque machine
+.env
+
+# Images générées par l'IA — régénérables, pas utile en historique
+novawin-back/public/uploads/produits/*
+!novawin-back/public/uploads/produits/.gitkeep
+
+# Éditeurs / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
