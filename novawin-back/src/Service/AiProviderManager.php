@@ -1,16 +1,12 @@
 <?php
-
 namespace App\Service;
-
 use App\Entity\Produit;
-
 class AiProviderManager
 {
     public function __construct(
         private GeminiService $gemini,
         private GroqService $groq
     ) {}
-
     public function genererContenuIA(Produit $produit, string $preferred = 'gemini'): array
     {
         $preferred = strtolower($preferred) === 'groq' ? 'groq' : 'gemini';
@@ -31,13 +27,11 @@ class AiProviderManager
                 continue;
             }
         }
-
         throw new \RuntimeException(
             'Les deux services IA (Gemini et Groq) sont indisponibles. Dernière erreur : '
             . ($derniereException?->getMessage() ?? 'inconnue')
         );
     }
-
     public function getProviderNames(): array
     {
         return ['gemini' => $this->gemini->getNom(), 'groq' => $this->groq->getNom()];
